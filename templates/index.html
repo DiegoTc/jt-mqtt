@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JT/T 808-2013 GPS Tracking Simulator</title>
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <style>
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: var(--bs-dark);
+            color: var(--bs-light);
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .log-line {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .simulator-section, .converter-section {
+            margin-bottom: 20px;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">JT/T 808-2013 GPS Tracking Simulator</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="simulator-section card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">Simulator</h3>
+                        <div class="d-flex">
+                            <button id="start-simulator" class="btn btn-success me-2" {% if simulator_running %}disabled{% endif %}>Start</button>
+                            <button id="stop-simulator" class="btn btn-danger" {% if not simulator_running %}disabled{% endif %}>Stop</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label for="device-id">Device ID:</label>
+                            <input type="text" class="form-control" id="device-id" value="{{ config.get('device_id', '123456789012') }}">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="start-latitude">Start Latitude:</label>
+                                    <input type="number" step="0.000001" class="form-control" id="start-latitude" value="{{ config.get('start_latitude', 39.908722) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="start-longitude">Start Longitude:</label>
+                                    <input type="number" step="0.000001" class="form-control" id="start-longitude" value="{{ config.get('start_longitude', 116.397499) }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="move" {% if config.get('move', True) %}checked{% endif %}>
+                            <label class="form-check-label" for="move">Simulate Movement</label>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="speed">Speed (km/h):</label>
+                                    <input type="number" class="form-control" id="speed" value="{{ config.get('speed', 60) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="direction">Direction (degrees):</label>
+                                    <input type="number" class="form-control" id="direction" value="{{ config.get('direction', 45) }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="location-interval">Location Interval (seconds):</label>
+                                    <input type="number" class="form-control" id="location-interval" value="{{ config.get('location_interval', 10) }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="heartbeat-interval">Heartbeat Interval (seconds):</label>
+                                    <input type="number" class="form-control" id="heartbeat-interval" value="{{ config.get('heartbeat_interval', 60) }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="batch-enabled" {% if config.get('batch_enabled', False) %}checked{% endif %}>
+                            <label class="form-check-label" for="batch-enabled">Enable Batch Reporting</label>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="batch-size">Batch Size:</label>
+                            <input type="number" class="form-control" id="batch-size" value="{{ config.get('batch_size', 5) }}">
+                        </div>
+                        
+                        <button id="save-simulator-config" class="btn btn-primary">Save Configuration</button>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h4>Simulator Log</h4>
+                    <div class="log-container" id="simulator-log">
+                        {% for log in simulator_log %}
+                            <p class="log-line">{{ log }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="converter-section card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">MQTT Converter</h3>
+                        <div class="d-flex">
+                            <button id="start-converter" class="btn btn-success me-2" {% if converter_running %}disabled{% endif %}>Start</button>
+                            <button id="stop-converter" class="btn btn-danger" {% if not converter_running %}disabled{% endif %}>Stop</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="jt808-host">JT808 Server Host:</label>
+                                    <input type="text" class="form-control" id="jt808-host" value="{{ config.get('jt808_host', '0.0.0.0') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="jt808-port">JT808 Server Port:</label>
+                                    <input type="number" class="form-control" id="jt808-port" value="{{ config.get('jt808_port', 8000) }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="mqtt-host">MQTT Host:</label>
+                                    <input type="text" class="form-control" id="mqtt-host" value="{{ config.get('mqtt_host', 'localhost') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="mqtt-port">MQTT Port:</label>
+                                    <input type="number" class="form-control" id="mqtt-port" value="{{ config.get('mqtt_port', 1883) }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="mqtt-user">MQTT Username:</label>
+                                    <input type="text" class="form-control" id="mqtt-user" value="{{ config.get('mqtt_user', '') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="mqtt-password">MQTT Password:</label>
+                                    <input type="password" class="form-control" id="mqtt-password" value="{{ config.get('mqtt_password', '') }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="mqtt-topic-prefix">MQTT Topic Prefix:</label>
+                            <input type="text" class="form-control" id="mqtt-topic-prefix" value="{{ config.get('mqtt_topic_prefix', 'jt808') }}">
+                        </div>
+                        
+                        <button id="save-converter-config" class="btn btn-primary">Save Configuration</button>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h4>Converter Log</h4>
+                    <div class="log-container" id="converter-log">
+                        {% for log in converter_log %}
+                            <p class="log-line">{{ log }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0">Map View</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Function to update logs
+        function updateLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    const simulatorLog = document.getElementById('simulator-log');
+                    const converterLog = document.getElementById('converter-log');
+                    
+                    simulatorLog.innerHTML = '';
+                    data.simulator_log.forEach(log => {
+                        const p = document.createElement('p');
+                        p.className = 'log-line';
+                        p.textContent = log;
+                        simulatorLog.appendChild(p);
+                    });
+                    
+                    converterLog.innerHTML = '';
+                    data.converter_log.forEach(log => {
+                        const p = document.createElement('p');
+                        p.className = 'log-line';
+                        p.textContent = log;
+                        converterLog.appendChild(p);
+                    });
+                    
+                    // Scroll to bottom
+                    simulatorLog.scrollTop = simulatorLog.scrollHeight;
+                    converterLog.scrollTop = converterLog.scrollHeight;
+                })
+                .catch(error => console.error('Error fetching logs:', error));
+        }
+        
+        // Update logs every 2 seconds
+        setInterval(updateLogs, 2000);
+        
+        // Simulator control buttons
+        document.getElementById('start-simulator').addEventListener('click', function() {
+            fetch('/api/simulator/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('start-simulator').disabled = true;
+                        document.getElementById('stop-simulator').disabled = false;
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error starting simulator:', error));
+        });
+        
+        document.getElementById('stop-simulator').addEventListener('click', function() {
+            fetch('/api/simulator/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('start-simulator').disabled = false;
+                        document.getElementById('stop-simulator').disabled = true;
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error stopping simulator:', error));
+        });
+        
+        // Converter control buttons
+        document.getElementById('start-converter').addEventListener('click', function() {
+            fetch('/api/converter/start', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('start-converter').disabled = true;
+                        document.getElementById('stop-converter').disabled = false;
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error starting converter:', error));
+        });
+        
+        document.getElementById('stop-converter').addEventListener('click', function() {
+            fetch('/api/converter/stop', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('start-converter').disabled = false;
+                        document.getElementById('stop-converter').disabled = true;
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error stopping converter:', error));
+        });
+        
+        // Save simulator configuration
+        document.getElementById('save-simulator-config').addEventListener('click', function() {
+            const config = {
+                device_id: document.getElementById('device-id').value,
+                start_latitude: parseFloat(document.getElementById('start-latitude').value),
+                start_longitude: parseFloat(document.getElementById('start-longitude').value),
+                move: document.getElementById('move').checked,
+                speed: parseInt(document.getElementById('speed').value),
+                direction: parseInt(document.getElementById('direction').value),
+                location_interval: parseInt(document.getElementById('location-interval').value),
+                heartbeat_interval: parseInt(document.getElementById('heartbeat-interval').value),
+                batch_enabled: document.getElementById('batch-enabled').checked,
+                batch_size: parseInt(document.getElementById('batch-size').value),
+                
+                // Preserve other configuration values
+                jt808_host: document.getElementById('jt808-host').value,
+                jt808_port: parseInt(document.getElementById('jt808-port').value),
+                mqtt_host: document.getElementById('mqtt-host').value,
+                mqtt_port: parseInt(document.getElementById('mqtt-port').value),
+                mqtt_user: document.getElementById('mqtt-user').value,
+                mqtt_password: document.getElementById('mqtt-password').value,
+                mqtt_topic_prefix: document.getElementById('mqtt-topic-prefix').value
+            };
+            
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Configuration saved successfully');
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error saving configuration:', error));
+        });
+        
+        // Save converter configuration
+        document.getElementById('save-converter-config').addEventListener('click', function() {
+            const config = {
+                jt808_host: document.getElementById('jt808-host').value,
+                jt808_port: parseInt(document.getElementById('jt808-port').value),
+                mqtt_host: document.getElementById('mqtt-host').value,
+                mqtt_port: parseInt(document.getElementById('mqtt-port').value),
+                mqtt_user: document.getElementById('mqtt-user').value,
+                mqtt_password: document.getElementById('mqtt-password').value,
+                mqtt_topic_prefix: document.getElementById('mqtt-topic-prefix').value,
+                
+                // Preserve other configuration values
+                device_id: document.getElementById('device-id').value,
+                start_latitude: parseFloat(document.getElementById('start-latitude').value),
+                start_longitude: parseFloat(document.getElementById('start-longitude').value),
+                move: document.getElementById('move').checked,
+                speed: parseInt(document.getElementById('speed').value),
+                direction: parseInt(document.getElementById('direction').value),
+                location_interval: parseInt(document.getElementById('location-interval').value),
+                heartbeat_interval: parseInt(document.getElementById('heartbeat-interval').value),
+                batch_enabled: document.getElementById('batch-enabled').checked,
+                batch_size: parseInt(document.getElementById('batch-size').value)
+            };
+            
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Configuration saved successfully');
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error saving configuration:', error));
+        });
+        
+        // Initialize map
+        let map;
+        let marker;
+        let track;
+        
+        function initMap() {
+            const startLat = parseFloat(document.getElementById('start-latitude').value);
+            const startLng = parseFloat(document.getElementById('start-longitude').value);
+            
+            // Create map centered at the start location
+            map = L.map('map').setView([startLat, startLng], 15);
+            
+            // Add tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add marker
+            marker = L.marker([startLat, startLng]).addTo(map);
+            
+            // Create polyline for the track
+            track = L.polyline([], {
+                color: 'red',
+                weight: 3,
+                opacity: 0.7
+            }).addTo(map);
+            
+            // Update marker position based on log messages
+            setInterval(updateMarkerPosition, 2000);
+        }
+        
+        function updateMarkerPosition() {
+            // This function would parse log messages to extract location updates
+            // For demonstration, we'll just simulate movement
+            if (marker && map && document.getElementById('move').checked) {
+                const simulatorLog = document.getElementById('simulator-log');
+                const logLines = simulatorLog.getElementsByClassName('log-line');
+                
+                // Look for location report messages
+                for (let i = logLines.length - 1; i >= 0; i--) {
+                    const line = logLines[i].textContent;
+                    if (line.includes('Sending location:')) {
+                        // Extract coordinates
+                        const match = line.match(/Sending location: ([\d.-]+), ([\d.-]+)/);
+                        if (match) {
+                            const lat = parseFloat(match[1]);
+                            const lng = parseFloat(match[2]);
+                            
+                            // Update marker position
+                            marker.setLatLng([lat, lng]);
+                            
+                            // Add point to track
+                            track.addLatLng([lat, lng]);
+                            
+                            // Center map on marker
+                            map.panTo([lat, lng]);
+                            
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Load Leaflet.js
+        function loadLeaflet() {
+            // Add Leaflet CSS
+            const css = document.createElement('link');
+            css.rel = 'stylesheet';
+            css.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+            document.head.appendChild(css);
+            
+            // Add Leaflet JS
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.js';
+            script.onload = initMap;
+            document.head.appendChild(script);
+        }
+        
+        // Load Leaflet when the page is loaded
+        window.addEventListener('load', loadLeaflet);
+    </script>
+</body>
+</html>
