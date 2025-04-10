@@ -1,0 +1,347 @@
+SLC
+Terminal communication protocol and data format
+According to JT/T 808-2013
+
+
+
+
+
+
+
+1. Agreement basis
+1.1 Communication mode
+The communication mode adopted in the protocol shall comply with the relevant provisions in JT/T 794, and the communication protocol shall adopt TCP protocol. Platform
+As the server side, the terminal is as the client.
+1.2 Data types
+The data types used in the protocol message are shown in Table 1:
+Table 1 Data types
+
+1. 3 Transmission rules
+The protocol uses the network byte order of big-endian (big-endian) to transfer words and double words.
+The terms are as follows:
+—— Byte (BYTE) transmission agreement: transmit in the way of byte stream;
+—— Word (WORD) transmission agreement: first transfer the high eight bits, then transfer the low eight bits;
+—— The transmission agreement of double word (DWORD): first transfer the high 24 bits, then transfer the high 16 bits, and then transfer the high 8 bits,
+Finally, the lower eight bits are passed.
+1.4 Composition of messages
+1.4.1 Message structure
+Each message consists of an identifier, a header, a body, and a checksum. The structure of the message is shown in Figure 1:
+
+Figure 1 Message structure
+1.4.2 Identification position
+Ox7e is used to indicate that if 0x7e appears in the checksum, message header and message body, then the transposition should be performed
+The rules are defined as follows:
+0x7e<——>0x7d followed by a 0x02;
+0x7d<——>0x7d is followed by a 0x01.
+The translation process is as follows:
+        When sending a message: message encapsulation ——> calculate and fill the check code ——> transmogrification;
+        When receiving a message: ——> transposition and restoration ——> verification code ——> parsing of the message.
+instance:
+If a packet with content 0x30 0x7e 0x08 0x7d 0x55 is sent, it will be encapsulated as follows: 0x7e 0x307d 0x020x080x7d 0x010x550x7e.
+1. 4. 3 Message header
+See Table 2 for the content of the news head:
+Table 2 Message header content
+
+
+The format structure of the message body attribute is shown in Figure 2:
+
+Figure 2 Message body attribute format structure diagram
+Data encryption method:
+—— bit10-bit12 is the data encryption identifier;
+—— When these three are 0, it indicates that the message body is not encrypted;
+—— When the 10th bit is 1, it indicates that the message body is encrypted by RSA algorithm;
+—— Other reservations.
+subpackage:
+When the 13th bit of the message body attribute is 1, it indicates that the message body is a long message and the packet sending processing is carried out, and the specific packet message is sent
+The message is determined by the packet encapsulation item; if the 13th bit is 0, there is no packet encapsulation item field in the message header.
+The contents of the packet encapsulation item are shown in Table 3
+                                Table 3 shows the contents of the packet encapsulation item
+JT/T 808-2011
+
+1.4 Verification code
+The checksum refers to the number of bytes occupied from the beginning of the message header, XORed with the next byte until the byte before the checksum.
+2.JT808-2013 General protocol data format	
+2.1 Terminal general response (0x0001)
+Example: 7e0001000599999999911800077fbc810300cb7e
+message ID:0x0001.
+The data format of the terminal generic response message body is shown in Table 4.
+                      Table 4 Data format of terminal general response message body
+
+2.2 Platform General Response (0x8001)
+Example: 7e8001000599999999911885eb0007070400677e
+message ID:0X8001.
+The data format of the platform general response message body is shown in Table 5.
+Table 5 Data format of platform general response message body
+
+2.3 Terminal heartbeat (0X0002)
+Example: 7e00020000999999999118000c877e
+message ID:0X0002.
+The terminal heartbeat data message body is empty. The platform replies with a general response
+2.4 Terminal Registration (0X0100)
+Example: 7e0100002d0511600044640000002a08523132333435333533333531313600000000000000000000000030303034343634ffd4c14238383838389e7e
+Message ID: 0X0100. The data format of terminal registration message body is shown in Table 6.
+Table 6 Data format of terminal registration message body
+
+2.5 Terminal registration response (0x8100)
+Example: 7e8100000e05116000446433ab0000003531313630303034343634727e
+message ID:0x8100.
+The data format of the terminal registration response message body is shown in Table 7.
+Table 7 Data format of terminal registration response message body
+
+2.6 Terminal logout (0x0003)
+Example: 7e000300003333333330010021137e
+message ID:0X0003
+The message body of the terminal logout is empty. The platform replies with a general response
+2.7 Terminal authentication (0x0102)
+Example: 7e0102000b051160004464000135313136303030343436346c7e
+message ID:0x0102.
+The data format of the terminal authentication message body is shown in Table 8. The platform responds with a general response
+Table 8 Data format of terminal authentication message body
+
+2.8 Set terminal parameters (0x8103)
+Example: 7e8103001c613310262184c1d20202000000130c33392e3130342e36322e3831000000180400001c84cb7e
+message ID:0x8103
+The data format of the terminal parameter message body is shown in Table 9. The terminal replies with a general response
+Table 9 Terminal parameter message body data format
+
+Table 10 Terminal parameter items
+
+Table 11 Terminal parameter Settings Definitions and descriptions of each parameter item
+
+2.12 Terminal Control (0x8105)
+Example: 7e81050000333333333001002105917e // Terminal restore factory Settings
+message ID:0x8105.
+The data format of the terminal control message body is shown in Table 13. The terminal replies with a general response
+Table 13 Terminal control message body data format
+
+Table 14 Terminal control command word description
+
+2.13 Location information report (0x0200)
+Example: 02000048051160004464000d00000000000c00020159885e06cbf34400000000000020080718072201040000000130011c310109e4020063e50100e60100e7080000000000000000ee0a01cc01262c009a6743001e7e
+Message ID: 0x0200. The platform replies with a generic response
+The location information report message body consists of a list of location basic information and location additional information items. The message structure is shown in Figure 3:
+
+Figure 3 Structure of location report message
+The list of location additional information items is composed of the location additional information items, or may be absent, depending on the length field in the message header.
+The data format of location basic information is shown in Table 16.
+Table 16 Basic location information data format
+
+Table 17 defines the status bits
+
+
+Table 18 Alarm flag definition
+
+
+The format of the location additional information item is shown in Table 19.
+
+Table 19 Format of additional information items at the location
+
+
+
+
+
+2.14 Location information query (0x8201)
+Example: 7e82010000999999999118000c0e7e
+message ID:0x8201.
+The location information query message body is empty.
+2.15 Location information query response (0x0201)
+Example: 7e02010055999999999118003b6f320000008000000000015989f606cbf01c00000000000098082020011501040000000004020101050100eb2101cc00262c0e3101262c0e6326262c0e6124262c0deb2225fc0fac2225fc110a1f06010030011031010ad87e
+message ID:0x0201.
+The data format of the location information query response message body is shown in Table 24.
+
+Table 24 Data format of location information query response message body
+
+2.16 Temporary position tracking control (0x8202)
+Example: 7e8202000599999999911885eb00050000003c5b7e
+message ID:0x8202.
+The data format of the temporary location tracking control message body is shown in Table 25. The terminal replies with a general response
+Table 25 Temporary location tracking control message body data format
+
+22.19 Setting up the phone book (0x8401)
+message ID:0x8401
+For example: 7e8401000b025623500534d1560101010205313030383600267e // Set a number 10086
+The data format of the message body for setting the phone number is shown in Table 40. The terminal replies with a general response
+Table 40 sets the message body data format of the phone book
+
+Table 41 Data format of contact item in telephone book
+
+                      
+2.20 Batch upload of positioning data (0x0704)
+message ID:0x0704
+
+The data format for batch uploading of positioning data is shown in Table 76. The platform replies with a general response
+See the attachment "Specific Example Analysis of Batch Reporting of Positioning Data" for detailed example analysis
+See the attachment "Data Length Analysis" for an example of data length calculation
+
+Table 76 Data format for batch uploading of location data
+
+
+Table 77 Data format for location report data items
+
+
+2.22 Query terminal attribute report (0x0107)
+Example: 7e0107004a33333333300800090000000000000041395f50000000000000000000000000000000000000000000000089860402101890016934001a534c5f52444120323031382d30382d31382031303a33363a32370301c37e
+message ID:0x0107.
+The data format of the query terminal attribute response message body is shown in Table 20. The general response is replied.
+				Table 20 Query terminal attribute response message body data format
+
+
+3. Custom protocol data format
+3.1 Request synchronization time (0x0109)
+Example: 7e0109000077777777740200057b7e
+message ID:0x0109.
+The message body is empty.
+Note: The platform should respond to the request synchronously, and the format is shown in 3.2
+
+3.2 Request synchronous time response (0x8109)
+Example: 7e81090008777777777943bbb207e208160f1f0c00547e
+message ID:0x8109.
+
+
+3.3 Set alarm location (0x8110)
+Example: 7e8110009e777777777402bfab03000007000431353a313831353a323531353a333131353a3336010431353a313831353a323531353a333131353a3336020431353a313831353a323531353a333131353a3336030431353a313831353a323531353a333131353a3336040431353a313831353a323531353a333131353a3336050431353a313831353a323531353a333131353a3336060431353a313831353a323531353a333131353a3336637e
+message ID:0x8110
+
+
+Table 42 Alarm clock location data format
+
+
+Note: The terminal responds to the general response of the terminal
+3.4 Request alarm location time (0x0110)
+Example: 7e01100000333333333009000a227e
+message ID:0x0110
+The message body is empty.
+Note: The platform replies to set the alarm clock location, see 3.3 for the format
+
+3.5 Upload the power saving mode modified by SMS to the server (0x0112)
+(A6S equipment features)
+Example: 7e011200066133100970100008020000000005317e
+message ID:0x0112
+
+Note: The platform responds with a generic response
+
+
+3.6 Request location information issued by the server (0x8111)
+Example: 7e8111004d333333333001b753001208150a3027033030310040e5b9bfe4b89ce79c8120e6b7b1e59cb3e5b88220e9be99e58d8ee58cba20e5b7a5e4b89ae8b7af20e99da0e8bf91e79b9be7919ee59586e58aa1e5a4a7e58ea6707e
+message ID:0x8111
+
+
+Note: The terminal replies to the terminal general response
+
+3.16 SMS Center Number (0x0818)
+The terminal updates the SMS center number, and the platform replies with a general response
+message ID:0x0818
+
+
+
+
+3.17 One-click sleep (0x8135)
+The message body is empty and the terminal responds with a generic response
+message ID:0x8135
+
+3.18 One-click wake up (0x8145)
+The message body is empty and the terminal responds with a generic response
+message ID:0x8145
+3.19 One-click restart (0x8155)
+The message body is empty and the terminal responds with a generic response
+message ID:0x8155
+
+3.20 Battery power update for dormant batteries (0x0210)
+Example: 7e0210000777777777792901c964180822154904837e
+message ID:0x0210
+After hibernation, it sends once every hour, and the platform responds with a general response
+
+
+
+3.21 Standard 808 protocol notification (0x0808)
+Example: 7e08080000999999999118000c857e
+The message body is empty and the server does not need to respond (sent after successful authentication, and the device should ensure that this data is sent successfully). It is used to notify the server that the protocol used by this device is standard 808 protocol
+message ID:0x0808
+
+3.23	Upload ICCID (0x1107)
+(Used to report ICCID with letters)
+message ID:0x1107.
+
+
+3.25 Synchronization of dormant network switch status (0x1006)
+	Note: Used to synchronize the switch status of whether the device is disconnected from the network when the device is in sleep mode with the server
+message ID:0x1006.
+
+
+
+3.26 Text message delivery (0x8300)
+message ID:0X8300
+The text message body data format is shown in Table 26
+Note: The flag used by SMS is 0, which is used for SMS transmission: emergency
+
+Table 26	Text message body data format is sent
+
+Table 27	Text information, flag meaning
+
+
+3.27 SMS response transparent transmission protocol (0x1300)
+message ID:0X1300
+The data format of SMS response transmission message body is shown in Table 28
+Table 28	SMS should answer the message body data format
+
+
+3.28 Time zone synchronization instruction (0x1007)
+	Note: Each time the device is turned on, it sends a synchronization of the current time zone to the server
+message ID:0x1007.
+
+
+
+
+3.29 Restore factory Settings Notice (0x0106)
+Example: 7e010600010511600044640001006c7e
+message ID:0x0106.
+The data format of SMS notification message body for factory reset is shown in the following table. The platform will reply with a general response or no response
+
+
+3.30 Server sends SMS through transmission (0x8113)
+message ID:0x8113
+Example: 7e8113001d02562350053100120b313536323335303035333110e5b9bfe4b89ce79c8120e6b7b1e59cb3777e
+
+Note: The terminal replies to the terminal general response
+
+
+3.5 Upload SMS to modify Settings The alarm clock is located on the server (0x0114)
+(Q13 Device-specific functions)
+Example: 7e0114007d01051160001395000107000131363a3030010431343a303031343a313531363a303032333a3130020431343a303031343a313531363a303032333a3130030431343a303031343a313531363a303032333a3130040431343a303031343a313531363a303032333a3130050431343a303031343a313531363a303032333a3130060131363a3030947e
+message ID:0x0114
+
+Table 42 Alarm location data format
+
+
+Note: The platform responds to generic responses
+
+
+
+
+appendix A
+4. Message comparison table
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5. Annexes
+1. Analysis of specific examples of batch upload of positioning data:
+
+
+
+Data length parsing:
+
+(You can save it locally to view a clear picture)
