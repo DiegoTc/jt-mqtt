@@ -1,6 +1,8 @@
 {
     "jt808_host": "0.0.0.0",
     "jt808_port": 8008,
+    "server_ip": "127.0.0.1",
+    "server_port": 8008,
     "mqtt_host": "localhost",
     "mqtt_port": 1883,
     "mqtt_user": "",

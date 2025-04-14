@@ -278,7 +278,42 @@ def api_logs():
         'converter_log': converter_log
     })
 
+def run_converter_in_background():
+    """Run the JT808 converter in the background"""
+    try:
+        # Import the modules here to avoid circular imports
+        import subprocess
+        
+        # Start the converter process
+        global converter_process
+        if converter_process is None or converter_process.poll() is not None:
+            converter_process = subprocess.Popen(
+                ['python', 'converter.py', '-v'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                bufsize=1,
+                universal_newlines=True
+            )
+            
+            # Start a thread to read the process output
+            threading.Thread(
+                target=read_process_output,
+                args=(converter_process, converter_log, 'Converter'),
+                daemon=True
+            ).start()
+            
+            add_log(converter_log, 'Converter: Process started automatically by web interface')
+            logger.info("JT808 converter started automatically by web interface")
+        else:
+            logger.info("JT808 converter is already running")
+    except Exception as e:
+        logger.error(f"Failed to start JT808 converter automatically: {e}")
+
 if __name__ == '__main__':
     # Create templates directory if it doesn't exist
     os.makedirs('templates', exist_ok=True)
+    
+    # Run the converter in the background at startup
+    run_converter_in_background()
+    
     app.run(debug=True, host='0.0.0.0', port=8080)
