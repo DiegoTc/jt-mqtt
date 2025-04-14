@@ -125,6 +125,10 @@ class JT808Server:
         
     def _accept_connections(self):
         """Accept new connections"""
+        if self.server_socket is None:
+            logger.error("Cannot accept connections: server socket is None")
+            return
+            
         while self.running:
             try:
                 client_socket, addr = self.server_socket.accept()
@@ -699,6 +703,11 @@ class JT808Server:
             topic: MQTT topic
             payload: Message payload (will be converted to JSON)
         """
+        # Check if MQTT client is available and connected
+        if self.mqtt_client is None or not self.mqtt_config.get('mqtt_connected', False):
+            logger.debug(f"Simulated MQTT publish to {topic}: {payload}")
+            return
+            
         try:
             # Make sure the device_id in the payload is a string
             if isinstance(payload, dict) and 'device_id' in payload:
@@ -832,7 +841,8 @@ def main():
     server = JT808Server(config['jt808_host'], config['jt808_port'], mqtt_client, mqtt_config)
     
     if not server.start():
-        mqtt_client.loop_stop()
+        if mqtt_client is not None and mqtt_connected:
+            mqtt_client.loop_stop()
         return
         
     try:
@@ -843,11 +853,13 @@ def main():
     except KeyboardInterrupt:
         logger.info("Stopping server...")
         server.stop()
-        mqtt_client.loop_stop()
+        if mqtt_client is not None and mqtt_connected:
+            mqtt_client.loop_stop()
     except Exception as e:
         logger.error(f"Unhandled exception: {e}")
         server.stop()
-        mqtt_client.loop_stop()
+        if mqtt_client is not None and mqtt_connected:
+            mqtt_client.loop_stop()
 
 if __name__ == '__main__':
     main()

@@ -55,3 +55,7 @@ args = "python simulator.py -v"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8008
+externalPort = 8008
