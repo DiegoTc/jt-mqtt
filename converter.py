@@ -4,27 +4,48 @@ JT/T 808-2013 to MQTT Converter
 
 This script listens for JT/T 808-2013 protocol messages and converts them to MQTT format.
 """
-import sys
-import os
-import time
-import socket
-import threading
-import logging
-import argparse
-import json
-import struct
-import paho.mqtt.client as mqtt
-from datetime import datetime
-from jt808.message import Message
-from jt808.constants import MessageID, StatusBit, AlarmFlag
-from jt808.utils import bytes_to_bcd, dms_to_decimal, parse_bcd_timestamp
+# Add a global try-except to catch any early errors
+try:
+    import sys
+    import os
+    import time
+    import socket
+    import threading
+    import logging
+    import argparse
+    import json
+    import struct
+    import traceback
+    import paho.mqtt.client as mqtt
+    from datetime import datetime
+    
+    # Configure basic logging before importing modules that might use it
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger('jt808-converter')
+    
+    # Now import our custom modules
+    try:
+        from jt808.message import Message
+        from jt808.constants import MessageID, StatusBit, AlarmFlag
+        from jt808.utils import bytes_to_bcd, dms_to_decimal, parse_bcd_timestamp
+        logger.info("Successfully imported all modules")
+    except Exception as module_err:
+        logger.error(f"Error importing custom modules: {module_err}")
+        logger.error(traceback.format_exc())
+        raise
+        
+except Exception as e:
+    # If we get an error during imports, print it to stderr and exit
+    import traceback
+    print(f"CRITICAL ERROR during initialization: {e}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger('jt808-converter')
+# Logging is already configured above, so just use the existing logger 
+# logger = logging.getLogger('jt808-converter')
 
 class JT808Server:
     """
