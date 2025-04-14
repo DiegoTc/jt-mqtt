@@ -54,11 +54,26 @@ Key configuration options:
 
 ### 3. Start the Web Interface
 
+You can start the web interface using one of the following methods:
+
 ```bash
+# Method 1: Using Python directly (uses port 8080)
 python main.py
+
+# Method 2: Using the start script (uses port from .env file or defaults to 8080)
+./start.sh
 ```
 
-This will start a web server on port 5000. Open your browser and navigate to `http://localhost:5000`.
+This will start a web server on port 8080. Open your browser and navigate to `http://localhost:8080`.
+
+You can change the port by creating a `.env` file based on the provided `.env.example`:
+
+```
+# Create a .env file
+cp .env.example .env
+# Edit the PORT value in .env
+PORT=8080  # Change to your preferred port
+```
 
 ### 4. Using the Web Interface
 
