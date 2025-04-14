@@ -4,8 +4,18 @@ Message class for JT/T 808-2013 protocol
 import struct
 import time
 import logging
+import traceback
+import sys
 from jt808.utils import calculate_checksum, apply_escape_rules, remove_escape_rules, get_current_timestamp
 from jt808.constants import MessageID
+
+# Configure more detailed logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
+logger = logging.getLogger('jt808.message')
 
 class Message:
     """
@@ -128,31 +138,51 @@ class Message:
         Returns:
             A Message object
         """
-        # Verify frame start and end
-        if not (data.startswith(b'\x7e') and data.endswith(b'\x7e')):
-            raise ValueError("Invalid message framing: must start and end with 0x7e")
+        try:
+            logger.debug(f"Decoding message: type={type(data)}, content={data}")
             
-        # Remove framing
-        data = data[1:-1]
-        
-        # Remove escape rules
-        unescaped_data = remove_escape_rules(data)
-        
-        # Verify checksum
-        msg_data = unescaped_data[:-1]
-        received_checksum = unescaped_data[-1]
-        calculated_checksum = calculate_checksum(msg_data)
-        
-        if received_checksum != calculated_checksum:
-            raise ValueError(f"Checksum verification failed: received {received_checksum}, calculated {calculated_checksum}")
+            # Verify frame start and end
+            if not (data.startswith(b'\x7e') and data.endswith(b'\x7e')):
+                raise ValueError("Invalid message framing: must start and end with 0x7e")
+                
+            # Remove framing
+            data = data[1:-1]
+            logger.debug(f"After removing framing: type={type(data)}, length={len(data)}")
             
-        # Parse header
-        # Basic header fields (without subpackage)
-        min_header_len = 12
-        if len(msg_data) < min_header_len:
-            raise ValueError(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}")
+            # Remove escape rules
+            try:
+                unescaped_data = remove_escape_rules(data)
+                logger.debug(f"After removing escape rules: type={type(unescaped_data)}, length={len(unescaped_data)}")
+            except Exception as e:
+                logger.error(f"Error removing escape rules: {e}\n{traceback.format_exc()}")
+                raise
             
-        msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
+            # Verify checksum
+            msg_data = unescaped_data[:-1]
+            received_checksum = unescaped_data[-1]
+            calculated_checksum = calculate_checksum(msg_data)
+            logger.debug(f"Checksum verification: received={received_checksum}, calculated={calculated_checksum}")
+            
+            if received_checksum != calculated_checksum:
+                raise ValueError(f"Checksum verification failed: received {received_checksum}, calculated {calculated_checksum}")
+                
+            # Parse header
+            # Basic header fields (without subpackage)
+            min_header_len = 12
+            if len(msg_data) < min_header_len:
+                raise ValueError(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}")
+                
+            try:
+                msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
+                logger.debug(f"Unpacked header: msg_id={msg_id:04X}, body_attr={body_attr}, "
+                          f"phone_bcd type={type(phone_bcd)}, phone_bcd={phone_bcd}, "
+                          f"msg_serial_no={msg_serial_no}, pkg_info={pkg_info}")
+            except Exception as e:
+                logger.error(f"Error unpacking header: {e}\n{traceback.format_exc()}")
+                raise
+        except Exception as e:
+            logger.error(f"Message decode failed: {e}\n{traceback.format_exc()}")
+            raise
         # Make sure we're handling the phone number correctly
         try:
             # First, ensure we're working with bytes

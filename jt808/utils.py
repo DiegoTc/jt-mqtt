@@ -5,6 +5,16 @@ import struct
 import time
 import logging
 import datetime
+import traceback
+import sys
+
+# Configure detailed logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
+logger = logging.getLogger('jt808.utils')
 
 def reverse_hex(hex_str):
     """Reverses byte order in hex string for display"""
@@ -71,23 +81,60 @@ def remove_escape_rules(data):
     Returns:
         Original bytes
     """
-    unescaped = bytearray()
-    i = 0
-    while i < len(data):
-        if data[i] == 0x7d and i + 1 < len(data):
-            if data[i + 1] == 0x02:
-                unescaped.append(0x7e)
-                i += 2
-            elif data[i + 1] == 0x01:
-                unescaped.append(0x7d)
-                i += 2
+    try:
+        logger.debug(f"remove_escape_rules: input data type={type(data)}, length={len(data)}")
+        
+        # Handle case where data is not bytes
+        if not isinstance(data, (bytes, bytearray)):
+            logger.error(f"remove_escape_rules: input is not bytes or bytearray, it's {type(data)}")
+            if isinstance(data, str):
+                # Try to convert string to bytes
+                logger.debug(f"Attempting to convert string to bytes: {data}")
+                try:
+                    # Try UTF-8 encoding
+                    data = data.encode('utf-8')
+                    logger.debug(f"Converted string to bytes using UTF-8 encoding")
+                except Exception as e:
+                    logger.error(f"Failed to encode string as UTF-8: {e}")
+                    # Try to interpret as hex string
+                    try:
+                        if all(c in '0123456789abcdefABCDEF' for c in data):
+                            data = bytes.fromhex(data)
+                            logger.debug(f"Converted hex string to bytes")
+                        else:
+                            # Last resort: raw bytes with latin-1 (will encode any string)
+                            data = data.encode('latin-1')
+                            logger.debug(f"Converted string to bytes using latin-1 encoding")
+                    except Exception as hex_err:
+                        logger.error(f"Failed to convert string to bytes: {hex_err}")
+                        raise ValueError(f"Cannot convert input to bytes: {data}")
+            else:
+                raise TypeError(f"Expected bytes or bytearray, got {type(data)}")
+        
+        unescaped = bytearray()
+        i = 0
+        while i < len(data):
+            if data[i] == 0x7d and i + 1 < len(data):
+                if data[i + 1] == 0x02:
+                    unescaped.append(0x7e)
+                    i += 2
+                elif data[i + 1] == 0x01:
+                    unescaped.append(0x7d)
+                    i += 2
+                else:
+                    unescaped.append(data[i])
+                    i += 1
             else:
                 unescaped.append(data[i])
                 i += 1
-        else:
-            unescaped.append(data[i])
-            i += 1
-    return bytes(unescaped)
+                
+        result = bytes(unescaped)
+        logger.debug(f"remove_escape_rules: output data type={type(result)}, length={len(result)}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in remove_escape_rules: {e}")
+        logger.error(traceback.format_exc())
+        raise
 
 def get_current_timestamp():
     """Get current timestamp in the format required by the protocol (BCD)"""
