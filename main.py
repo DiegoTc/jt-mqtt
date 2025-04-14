@@ -66,12 +66,42 @@ def read_process_output(process, log_list, prefix):
     """Read output from a process and add it to the log list"""
     while process.poll() is None:
         try:
-            line = process.stdout.readline().decode('utf-8').strip()
+            line = process.stdout.readline().strip()
+            if isinstance(line, bytes):
+                try:
+                    # Try to decode as UTF-8
+                    line = line.decode('utf-8')
+                except UnicodeDecodeError:
+                    # Fall back to latin-1 if UTF-8 fails (it can handle any byte)
+                    line = line.decode('latin-1')
+            
             if line:
-                add_log(log_list, f"{prefix}: {line}")
+                # Check if the line contains an error message
+                if 'Error' in line or 'error' in line or 'Exception' in line or 'exception' in line:
+                    add_log(log_list, f"{prefix} ERROR: {line}")
+                else:
+                    add_log(log_list, f"{prefix}: {line}")
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
             add_log(log_list, f"{prefix} ERROR: {e}")
+            add_log(log_list, f"{prefix} ERROR DETAILS: {error_details}")
             break
+    
+    # Add a final message when the process exits
+    if process.poll() is not None:
+        add_log(log_list, f"{prefix}: Process exited with code {process.poll()}")
+        
+        # Try to capture any remaining output
+        remaining_output = ""
+        try:
+            remaining_output = process.stdout.read()
+            if remaining_output:
+                if isinstance(remaining_output, bytes):
+                    remaining_output = remaining_output.decode('utf-8', errors='replace')
+                add_log(log_list, f"{prefix} FINAL OUTPUT: {remaining_output}")
+        except Exception as e:
+            add_log(log_list, f"{prefix} ERROR reading final output: {e}")
 
 @app.route('/')
 def index():

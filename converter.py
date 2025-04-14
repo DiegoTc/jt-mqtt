@@ -40,8 +40,17 @@ try:
 except Exception as e:
     # If we get an error during imports, print it to stderr and exit
     import traceback
+    import re
     print(f"CRITICAL ERROR during initialization: {e}", file=sys.stderr)
-    traceback.print_exc(file=sys.stderr)
+    tb_str = traceback.format_exc()
+    print(f"Error details: {tb_str}", file=sys.stderr)
+    
+    # Get the line number and file where the error occurred
+    line_match = re.search(r'File "([^"]+)", line (\d+)', tb_str)
+    if line_match:
+        error_file = line_match.group(1)
+        line_num = line_match.group(2)
+        print(f"Error occurred in file {error_file} at or near line {line_num}", file=sys.stderr)
     sys.exit(1)
 
 # Logging is already configured above, so just use the existing logger 
