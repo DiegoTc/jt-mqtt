@@ -26,7 +26,16 @@ class Message:
             subpackage_info: Subpackage information (tuple of total, seq)
         """
         self.msg_id = msg_id
-        self.phone_no = phone_no
+        
+        # Ensure phone_no is always stored as a string
+        if isinstance(phone_no, bytes):
+            try:
+                self.phone_no = phone_no.decode('ascii')
+            except Exception:
+                self.phone_no = ''.join([f'{b:02x}' for b in phone_no]).upper()
+        else:
+            self.phone_no = str(phone_no)
+            
         self.body = body if body is not None else b''
         self.msg_serial_no = msg_serial_no
         self.is_subpackage = is_subpackage
@@ -144,13 +153,24 @@ class Message:
             raise ValueError(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}")
             
         msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
-        # Make sure we're handling the phone number correctly (it's already in bytes format)
+        # Make sure we're handling the phone number correctly
         try:
-            # If it's in BCD format
-            phone_no = phone_bcd.decode('ascii')
+            # First, ensure we're working with bytes
+            if isinstance(phone_bcd, bytes):
+                # If it's in bytes format, try to decode it as ASCII
+                phone_no = phone_bcd.decode('ascii')
+            elif isinstance(phone_bcd, str):
+                # If it's already a string, just use it directly
+                phone_no = phone_bcd
+            else:
+                # For other types, convert to string
+                phone_no = str(phone_bcd)
         except Exception as e:
             # As a fallback, try to represent the bytes directly
-            phone_no = ''.join([f'{b:02x}' for b in phone_bcd]).upper()
+            if isinstance(phone_bcd, bytes):
+                phone_no = ''.join([f'{b:02x}' for b in phone_bcd]).upper()
+            else:
+                phone_no = str(phone_bcd)
         
         # Check if subpackage
         is_subpackage = bool(body_attr & 0x2000)
