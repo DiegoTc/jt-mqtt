@@ -109,10 +109,15 @@ def api_config():
 @app.route('/api/simulator/start', methods=['POST'])
 def api_simulator_start():
     """API endpoint to start the simulator"""
-    global simulator_process
+    global simulator_process, converter_process
     
     if simulator_process is not None and simulator_process.poll() is None:
         return jsonify({'status': 'error', 'message': 'Simulator is already running'}), 400
+    
+    # Check if converter is running
+    if converter_process is None or converter_process.poll() is not None:
+        add_log(simulator_log, 'Simulator WARNING: MQTT Converter is not running. Start the converter first to avoid connection errors.')
+        return jsonify({'status': 'error', 'message': 'MQTT Converter is not running. Please start the converter first.'}), 400
     
     try:
         # Start the simulator process
@@ -131,8 +136,10 @@ def api_simulator_start():
             daemon=True
         ).start()
         
+        add_log(simulator_log, 'Simulator: Process started successfully')
         return jsonify({'status': 'success', 'message': 'Simulator started'})
     except Exception as e:
+        add_log(simulator_log, f'Simulator ERROR: Failed to start: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/simulator/stop', methods=['POST'])
@@ -173,6 +180,8 @@ def api_converter_start():
         return jsonify({'status': 'error', 'message': 'Converter is already running'}), 400
     
     try:
+        add_log(converter_log, 'Converter: Starting JT808 to MQTT converter server...')
+        
         # Start the converter process
         converter_process = subprocess.Popen(
             ['python', 'converter.py', '-v'],
@@ -189,17 +198,25 @@ def api_converter_start():
             daemon=True
         ).start()
         
+        add_log(converter_log, 'Converter: Process started successfully')
+        add_log(converter_log, 'Converter: You can now start the simulator')
         return jsonify({'status': 'success', 'message': 'Converter started'})
     except Exception as e:
+        add_log(converter_log, f'Converter ERROR: Failed to start: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/converter/stop', methods=['POST'])
 def api_converter_stop():
     """API endpoint to stop the converter"""
-    global converter_process
+    global converter_process, simulator_process
     
     if converter_process is None or converter_process.poll() is not None:
         return jsonify({'status': 'error', 'message': 'Converter is not running'}), 400
+    
+    # Check if simulator is still running
+    if simulator_process is not None and simulator_process.poll() is None:
+        add_log(converter_log, 'Converter WARNING: Simulator is still running. Stop the simulator first to avoid errors.')
+        return jsonify({'status': 'error', 'message': 'Simulator is still running. Please stop the simulator first.'}), 400
     
     try:
         # Send termination signal to the process
@@ -220,6 +237,7 @@ def api_converter_stop():
         converter_process = None
         return jsonify({'status': 'success', 'message': 'Converter stopped'})
     except Exception as e:
+        add_log(converter_log, f'Converter ERROR: Failed to stop: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/logs', methods=['GET'])

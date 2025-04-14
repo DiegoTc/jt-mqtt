@@ -34,6 +34,15 @@
     <div class="container mt-4">
         <h1 class="mb-4">JT/T 808-2013 GPS Tracking Simulator</h1>
         
+        <div class="alert alert-info mb-4">
+            <strong>Quick Start Guide:</strong>
+            <ol>
+                <li>First start the <strong>MQTT Converter</strong> server</li>
+                <li>Then start the <strong>Simulator</strong> to begin sending data</li>
+                <li>Check the logs below for connection status</li>
+            </ol>
+        </div>
+
         <div class="row">
             <div class="col-md-6">
                 <div class="simulator-section card">
@@ -46,8 +55,9 @@
                     </div>
                     <div class="card-body">
                         <div class="form-group mb-3">
-                            <label for="device-id">Device ID:</label>
-                            <input type="text" class="form-control" id="device-id" value="{{ config.get('device_id', '123456789012') }}">
+                            <label for="device-id">Device ID (IMEI):</label>
+                            <input type="text" class="form-control" id="device-id" value="{{ config.get('device_id', '123456789012') }}" placeholder="Enter 12-15 digit IMEI number">
+                            <small class="form-text text-muted">Enter a 12-15 digit IMEI number. If using a 15-digit IMEI, only the last 12 digits will be used for protocol compatibility.</small>
                         </div>
                         
                         <div class="row">
