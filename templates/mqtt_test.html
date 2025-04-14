@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetTracker MQTT Test</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        #map { 
+            height: 500px; 
+            width: 100%;
+            border-radius: 8px;
+        }
+        .tracker-container {
+            padding: 20px;
+        }
+        .info-panel {
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            background-color: var(--bs-dark);
+            color: var(--bs-light);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 5px;
+        }
+        .badge-label {
+            min-width: 60px;
+            display: inline-block;
+        }
+        .pet-sidebar {
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 5px;
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 250px;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container tracker-container">
+        <div class="row mb-4">
+            <div class="col">
+                <h1>PetTracker MQTT Test</h1>
+                <p class="lead">Real-time tracking data from JT808 simulator via MQTT</p>
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Live Tracking Map</h5>
+                        <div>
+                            <span id="connection-status" class="badge bg-warning">Disconnected</span>
+                            <button id="connect-btn" class="btn btn-sm btn-primary ms-2">Connect</button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0 position-relative">
+                        <div id="map"></div>
+                        <div id="pet-info" class="pet-sidebar" style="display: none;">
+                            <h5 id="pet-id">Pet ID: -</h5>
+                            <div class="mb-2">
+                                <span class="badge-label">Latitude:</span> <span id="pet-lat">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="badge-label">Longitude:</span> <span id="pet-lon">-</span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="badge-label">Speed:</span> <span id="pet-speed">-</span> km/h
+                            </div>
+                            <div class="mb-2">
+                                <span class="badge-label">Direction:</span> <span id="pet-dir">-</span>°
+                            </div>
+                            <div class="mb-2">
+                                <span class="badge-label">Updated:</span> <span id="pet-time">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Connection Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="mqtt-form">
+                            <div class="mb-3">
+                                <label for="mqtt-host" class="form-label">MQTT Broker Host</label>
+                                <input type="text" class="form-control" id="mqtt-host" value="localhost">
+                            </div>
+                            <div class="mb-3">
+                                <label for="mqtt-port" class="form-label">MQTT WebSockets Port</label>
+                                <input type="number" class="form-control" id="mqtt-port" value="9001">
+                            </div>
+                            <div class="mb-3">
+                                <label for="mqtt-topic" class="form-label">MQTT Topic</label>
+                                <input type="text" class="form-control" id="mqtt-topic" value="pettracker/#">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Connect</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">MQTT Messages</h5>
+                        <button id="clear-log" class="btn btn-sm btn-secondary">Clear</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="mqtt-log" class="info-panel"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Map initialization
+        mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN'; // Replace with your token
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-88.02, 15.50], // Honduras coordinates
+            zoom: 16
+        });
+
+        // Add pet marker
+        const marker = new mapboxgl.Marker({
+            color: '#F7455D'
+        }).setLngLat([-88.02, 15.50]).addTo(map);
+
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl());
+
+        // MQTT client variables
+        let client = null;
+        let lastMessages = [];
+        const maxLogEntries = 50;
+
+        // UI elements
+        const connectBtn = document.getElementById('connect-btn');
+        const connectionStatus = document.getElementById('connection-status');
+        const mqttForm = document.getElementById('mqtt-form');
+        const mqttLog = document.getElementById('mqtt-log');
+        const clearLogBtn = document.getElementById('clear-log');
+        const petInfo = document.getElementById('pet-info');
+        const petId = document.getElementById('pet-id');
+        const petLat = document.getElementById('pet-lat');
+        const petLon = document.getElementById('pet-lon');
+        const petSpeed = document.getElementById('pet-speed');
+        const petDir = document.getElementById('pet-dir');
+        const petTime = document.getElementById('pet-time');
+
+        // Connect to MQTT broker
+        function connectMQTT() {
+            const host = document.getElementById('mqtt-host').value;
+            const port = document.getElementById('mqtt-port').value;
+            const topic = document.getElementById('mqtt-topic').value;
+            
+            if (client && client.connected) {
+                client.end();
+            }
+            
+            connectionStatus.className = 'badge bg-warning';
+            connectionStatus.innerText = 'Connecting...';
+            
+            const clientId = 'pettracker_web_' + Math.random().toString(16).substr(2, 8);
+            const connectUrl = `ws://${host}:${port}`;
+            
+            try {
+                client = mqtt.connect(connectUrl, {
+                    clientId,
+                    clean: true,
+                    connectTimeout: 4000,
+                    reconnectPeriod: 1000
+                });
+                
+                client.on('connect', () => {
+                    console.log('Connected to MQTT broker');
+                    connectionStatus.className = 'badge bg-success';
+                    connectionStatus.innerText = 'Connected';
+                    connectBtn.innerText = 'Disconnect';
+                    
+                    // Subscribe to topics
+                    client.subscribe(topic, (err) => {
+                        if (!err) {
+                            addLogEntry('info', `Subscribed to ${topic}`);
+                        } else {
+                            addLogEntry('error', `Failed to subscribe: ${err.message}`);
+                        }
+                    });
+                });
+                
+                client.on('message', (topic, message) => {
+                    try {
+                        const payload = JSON.parse(message.toString());
+                        addLogEntry('message', `${topic}: ${JSON.stringify(payload)}`);
+                        
+                        // Update map if location data
+                        if (topic.includes('/location') || topic.includes('/tracking')) {
+                            updateMapWithLocationData(payload, topic);
+                        }
+                    } catch (error) {
+                        addLogEntry('error', `Failed to parse message: ${error.message}`);
+                    }
+                });
+                
+                client.on('error', (err) => {
+                    console.error('MQTT error:', err);
+                    connectionStatus.className = 'badge bg-danger';
+                    connectionStatus.innerText = 'Error';
+                    addLogEntry('error', `Connection error: ${err.message}`);
+                });
+                
+                client.on('disconnect', () => {
+                    connectionStatus.className = 'badge bg-warning';
+                    connectionStatus.innerText = 'Disconnected';
+                    connectBtn.innerText = 'Connect';
+                    addLogEntry('info', 'Disconnected from broker');
+                });
+                
+                client.on('close', () => {
+                    connectionStatus.className = 'badge bg-warning';
+                    connectionStatus.innerText = 'Disconnected';
+                    connectBtn.innerText = 'Connect';
+                });
+                
+            } catch (error) {
+                console.error('MQTT connection error:', error);
+                connectionStatus.className = 'badge bg-danger';
+                connectionStatus.innerText = 'Error';
+                addLogEntry('error', `Failed to connect: ${error.message}`);
+            }
+        }
+        
+        // Add log entry to MQTT log
+        function addLogEntry(type, message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            let badgeClass = 'bg-info';
+            if (type === 'error') badgeClass = 'bg-danger';
+            if (type === 'message') badgeClass = 'bg-success';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="badge ${badgeClass} me-2">${type}</span> <small>${timestamp}</small><br>${message}`;
+            
+            mqttLog.insertBefore(entry, mqttLog.firstChild);
+            
+            // Limit number of entries
+            lastMessages.push(entry);
+            if (lastMessages.length > maxLogEntries) {
+                const removed = lastMessages.shift();
+                if (mqttLog.contains(removed)) {
+                    mqttLog.removeChild(removed);
+                }
+            }
+        }
+        
+        // Update map with location data
+        function updateMapWithLocationData(data, topic) {
+            let lat, lon, speed, direction, deviceId, timestamp;
+            
+            // Parse based on topic/message format
+            if (topic.includes('/location')) {
+                // Location topic format
+                deviceId = data.device_id;
+                lat = data.location.latitude;
+                lon = data.location.longitude;
+                speed = data.location.speed;
+                direction = data.location.direction;
+                timestamp = data.timestamp;
+            } else if (topic.includes('/tracking')) {
+                // Tracking topic format
+                deviceId = data.device_id;
+                lat = data.latitude;
+                lon = data.longitude;
+                speed = data.speed;
+                direction = data.direction;
+                timestamp = data.timestamp;
+            }
+            
+            if (lat && lon) {
+                // Update marker and center map
+                marker.setLngLat([lon, lat]);
+                map.setCenter([lon, lat]);
+                
+                // Update pet info sidebar
+                petInfo.style.display = 'block';
+                petId.innerText = `Pet ID: ${deviceId || '-'}`;
+                petLat.innerText = lat.toFixed(6);
+                petLon.innerText = lon.toFixed(6);
+                petSpeed.innerText = speed || '-';
+                petDir.innerText = direction || '-';
+                
+                // Format timestamp
+                let timeDisplay = timestamp;
+                try {
+                    if (timestamp) {
+                        const date = new Date(timestamp);
+                        timeDisplay = date.toLocaleTimeString();
+                    }
+                } catch (e) {
+                    timeDisplay = timestamp;
+                }
+                petTime.innerText = timeDisplay || '-';
+            }
+        }
+        
+        // Event listeners
+        connectBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (client && client.connected) {
+                client.end();
+                connectBtn.innerText = 'Connect';
+                connectionStatus.className = 'badge bg-warning';
+                connectionStatus.innerText = 'Disconnected';
+            } else {
+                connectMQTT();
+            }
+        });
+        
+        mqttForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            connectMQTT();
+        });
+        
+        clearLogBtn.addEventListener('click', () => {
+            mqttLog.innerHTML = '';
+            lastMessages = [];
+        });
+        
+        // Initialize map
+        map.on('load', () => {
+            console.log('Map loaded');
+        });
+    </script>
+</body>
+</html>

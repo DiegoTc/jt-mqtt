@@ -1,0 +1,38 @@
+I'm currently working on the PetTracker system with the jt-mqtt simulator. Recent updates have modified the converter code to publish GPS tracking data as JSON messages to an MQTT broker. For now, I’m using a local MQTT broker (Mosquitto) running at mqtt://localhost:1883 for testing before switching to AWS IoT in production.
+
+I need detailed testing instructions to verify the changes. Please provide:
+
+Steps to Verify the Local Mosquitto Broker:
+
+How to confirm Mosquitto is installed, configured, and running (e.g., using ps aux | grep mosquitto or checking the broker log).
+
+Any commands or scripts (e.g., nohup mosquitto -c mosquitto.conf > mosquitto.log 2>&1 &) to start the broker in the background.
+
+Using a Subscription Client to Test MQTT Messages:
+
+Instructions on how to use a tool like mosquitto_sub to subscribe to the relevant MQTT topic (e.g., pettracker/#). For example, please provide a sample command like:
+
+bash
+Copy
+mosquitto_sub -h localhost -p 1883 -t "pettracker/#" -v
+Explain what output to expect when the simulator publishes messages.
+
+End-to-End Testing of the Data Pipeline:
+
+Detailed steps on how to start the jt-mqtt simulator and converter so that they connect to the Mosquitto broker.
+
+How to verify that the converter is successfully publishing JSON messages to the broker (for example, through debug logs or by observing messages using mosquitto_sub).
+
+Testing Integration with the PetTracker Frontend (Optional):
+
+Guidance on how to simulate a frontend subscription (or how the backend may relay data) and verify that the Mapbox map is updated with the tracking data.
+
+Any sample code or instructions on observing real-time data updates on the map.
+
+Deliverables:
+
+A step-by-step guide or checklist for testing the entire MQTT pipeline locally, from running the Mosquitto broker through to verifying published messages and front-end integration.
+
+Example commands, configuration verification steps, and pointers on what expected outputs or log messages should look like.
+
+The goal is to ensure that the complete data pipeline—from the JT/T 808-2013 simulator, through the MQTT converter, to the local Mosquitto broker (and eventually to the PetTracker frontend)—is working properly. Please provide detailed instructions so I can confidently test and verify that each component is operating as expected.
