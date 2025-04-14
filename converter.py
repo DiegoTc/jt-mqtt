@@ -319,17 +319,20 @@ class JT808Server:
             auth_code: Authentication code
         """
         try:
-            # Use a valid auth code - important fix
-            if not auth_code or auth_code.isspace():
+            # Always use a valid auth code (JT808 protocol requires a non-empty auth code)
+            if not auth_code or len(auth_code.strip()) == 0:
                 auth_code = "123456"
                 logger.warning(f"Empty auth code detected, using default: '{auth_code}'")
             
-            # Prepare registration response body
+            # Prepare registration response body - pack the message serial number and result
             body = struct.pack('>HB', message.msg_serial_no, result)
             
-            # Add auth code
+            # Add auth code with proper length byte
             auth_bytes = auth_code.encode('utf-8')
             body += bytes([len(auth_bytes)]) + auth_bytes
+            
+            # Debug the auth code bytes
+            logger.debug(f"Auth code: '{auth_code}', bytes representation: {auth_bytes.hex()}, length: {len(auth_bytes)}")
             
             # Create response message
             response = Message(
@@ -346,6 +349,7 @@ class JT808Server:
             logger.info(f"Sent registration response to {message.phone_no}: result={result}, auth_code='{auth_code}'")
         except Exception as e:
             logger.error(f"Failed to send registration response: {e}")
+            logger.error(traceback.format_exc())
             
     def _close_client(self, client_socket):
         """

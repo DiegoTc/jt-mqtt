@@ -53,9 +53,17 @@ task = "shell.exec"
 args = "python simulator.py -v"
 
 [[ports]]
+localPort = 1883
+externalPort = 3000
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
 [[ports]]
 localPort = 8008
 externalPort = 8008
+
+[[ports]]
+localPort = 9001
+externalPort = 3001
