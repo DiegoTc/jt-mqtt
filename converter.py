@@ -742,7 +742,7 @@ def load_config():
     """Load configuration from file or use defaults"""
     default_config = {
         'jt808_host': '0.0.0.0',
-        'jt808_port': 8000,
+        'jt808_port': 8008,  # Updated to match config.json
         'mqtt_host': 'localhost',
         'mqtt_port': 1883,
         'mqtt_user': '',

@@ -274,7 +274,7 @@ def load_config():
     default_config = {
         'device_id': '123456789012',
         'server_ip': '127.0.0.1',
-        'server_port': 8000,
+        'server_port': 8008,  # Updated to match converter port
         'start_latitude': 39.908722,
         'start_longitude': 116.397499,
         'altitude': 100,
