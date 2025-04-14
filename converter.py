@@ -12,6 +12,7 @@ import threading
 import logging
 import argparse
 import json
+import struct
 import paho.mqtt.client as mqtt
 from datetime import datetime
 from jt808.message import Message
@@ -182,8 +183,12 @@ class JT808Server:
                 
                 # Update device ID if not yet known
                 if not self.clients[client_socket]['device_id'] and hasattr(message, 'phone_no'):
-                    self.clients[client_socket]['device_id'] = message.phone_no
-                    logger.info(f"Client {self.clients[client_socket]['addr']} identified as device {message.phone_no}")
+                    # Make sure device_id is always stored as a string
+                    if isinstance(message.phone_no, str):
+                        self.clients[client_socket]['device_id'] = message.phone_no
+                    else:
+                        self.clients[client_socket]['device_id'] = str(message.phone_no)
+                    logger.info(f"Client {self.clients[client_socket]['addr']} identified as device {self.clients[client_socket]['device_id']}")
                 
                 # Process the message
                 self._process_message(client_socket, message)
@@ -665,6 +670,13 @@ class JT808Server:
             payload: Message payload (will be converted to JSON)
         """
         try:
+            # Make sure the device_id in the payload is a string
+            if isinstance(payload, dict) and 'device_id' in payload:
+                payload['device_id'] = str(payload['device_id'])
+                
+            # Make sure the topic is a string
+            topic = str(topic)
+            
             result = self.mqtt_client.publish(topic, json.dumps(payload), qos=1)
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 logger.error(f"Failed to publish to {topic}: {result}")
