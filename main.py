@@ -124,6 +124,11 @@ def mqtt_test():
     """Render the MQTT test page"""
     return render_template('mqtt_test.html')
 
+@app.route('/docs')
+def documentation():
+    """Render the documentation page"""
+    return render_template('documentation.html')
+
 @app.route('/api/config', methods=['GET', 'POST'])
 def api_config():
     """API endpoint to get or update configuration"""

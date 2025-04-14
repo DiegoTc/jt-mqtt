@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetTracker Documentation</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container py-4">
+        <header class="pb-3 mb-4 border-bottom">
+            <div class="d-flex align-items-center">
+                <svg class="me-2" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h1 class="h4 mb-0">PetTracker Documentation</h1>
+            </div>
+        </header>
+
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="list-group mb-4">
+                    <a href="/" class="list-group-item list-group-item-action">Dashboard</a>
+                    <a href="/mqtt-test" class="list-group-item list-group-item-action">MQTT Test Page</a>
+                    <a href="#" class="list-group-item list-group-item-action active">Documentation</a>
+                </div>
+            </div>
+            <div class="col-lg-9">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">Testing Resources</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Comprehensive guides and tools for testing the JT/T 808-2013 to MQTT pipeline.</p>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">MQTT Testing Guide</h6>
+                                            <p class="mb-0 small text-muted">Step-by-step instructions for testing the entire data pipeline</p>
+                                        </div>
+                                        <a href="https://github.com/pettracker/docs/testing_guide.md" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">MQTT Test Page</h6>
+                                            <p class="mb-0 small text-muted">Web interface for monitoring MQTT messages</p>
+                                        </div>
+                                        <a href="/mqtt-test" class="btn btn-sm btn-outline-primary">Open</a>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">Mosquitto FAQ</h6>
+                                            <p class="mb-0 small text-muted">Common questions about MQTT broker usage</p>
+                                        </div>
+                                        <a href="https://github.com/pettracker/docs/mosquitto_faq.md" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">Quick Start Scripts</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Automated scripts to help you quickly set up and test the system.</p>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">Test Environment Startup</h6>
+                                            <p class="mb-0 small text-muted">Interactive script to start all components for testing</p>
+                                        </div>
+                                        <div class="text-monospace small bg-dark p-2 rounded">
+                                            <code>./start_test_environment.sh</code>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">Monitor MQTT Traffic</h6>
+                                            <p class="mb-0 small text-muted">Command to subscribe to all PetTracker topics</p>
+                                        </div>
+                                        <div class="text-monospace small bg-dark p-2 rounded">
+                                            <code>mosquitto_sub -t "pettracker/#" -v</code>
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">Start MQTT Broker</h6>
+                                            <p class="mb-0 small text-muted">Command to start the Mosquitto broker</p>
+                                        </div>
+                                        <div class="text-monospace small bg-dark p-2 rounded">
+                                            <code>mosquitto -c mosquitto.conf</code>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Testing Checklist</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> Use this checklist to verify that all components of the JT/T 808-2013 to MQTT pipeline are functioning correctly.
+                        </div>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Step</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Verify Mosquitto MQTT broker is running</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Start JT808 to MQTT converter</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>Verify converter connects to MQTT broker</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>Start JT808 simulator</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>5</td>
+                                    <td>Verify simulator registers with converter</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>6</td>
+                                    <td>Check for heartbeat messages on MQTT</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>7</td>
+                                    <td>Check for location updates on MQTT</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                                <tr>
+                                    <td>8</td>
+                                    <td>Verify location data format and content</td>
+                                    <td><span class="badge bg-warning">To Check</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

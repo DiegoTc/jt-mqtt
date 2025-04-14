@@ -138,6 +138,36 @@ The converter publishes messages to the following MQTT topics:
 
 Where `{prefix}` is the configured MQTT topic prefix (default: `jt808`) and `{device_id}` is the device identifier.
 
+## Testing
+
+Comprehensive testing guides are available to help you verify and troubleshoot your setup:
+
+- **Testing Guide**: Step-by-step instructions for testing the MQTT pipeline [docs/testing_guide.md](docs/testing_guide.md)
+- **Mosquitto FAQ**: Common questions about using the MQTT broker [docs/mosquitto_faq.md](docs/mosquitto_faq.md)
+- **Test MQTT Page**: A web interface for monitoring MQTT messages at [http://localhost:5000/mqtt-test](http://localhost:5000/mqtt-test)
+- **Test Environment Script**: Automated setup of the testing environment using [start_test_environment.sh](start_test_environment.sh)
+
+### Testing the MQTT Pipeline
+
+To quickly test the entire pipeline:
+
+1. **Start the MQTT broker**:
+   ```bash
+   mkdir -p /tmp/mosquitto/
+   mosquitto -c mosquitto.conf > mosquitto.log 2>&1 &
+   ```
+
+2. **Start the converter and simulator** via web interface:
+   - Navigate to [http://localhost:5000](http://localhost:5000)
+   - Click "Start Converter" then "Start Simulator"
+   
+3. **Monitor MQTT messages**:
+   ```bash
+   mosquitto_sub -h localhost -p 1883 -t "pettracker/#" -v
+   ```
+
+See the comprehensive [testing guide](docs/testing_guide.md) for detailed steps and troubleshooting.
+
 ## Troubleshooting
 
 1. **Connection Issues**
@@ -148,10 +178,13 @@ Where `{prefix}` is the configured MQTT topic prefix (default: `jt808`) and `{de
 2. **MQTT Connection Problems**
    - Check MQTT broker connection settings
    - Verify the broker is running and accessible
+   - Use `mosquitto_sub -t "#" -v` to monitor all MQTT traffic
+   - Check broker logs with `cat mosquitto.log`
 
 3. **Logging**
    - Enable verbose mode (-v) for detailed logs
    - Check the logs for specific error messages
+   - View real-time logs in the web interface
 
 ## License
 
