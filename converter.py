@@ -17,6 +17,7 @@ try:
     import struct
     import traceback
     import paho.mqtt.client as mqtt
+    import ssl
     from datetime import datetime
     import dotenv
     
@@ -785,14 +786,29 @@ def load_config():
     
     # Load JT808 settings from environment
     default_config['jt808_host'] = os.environ.get('JT808_HOST', default_config.get('jt808_host'))
-    default_config['jt808_port'] = int(os.environ.get('JT808_PORT', default_config.get('jt808_port')))
+    
+    # Safely convert port to integer
+    jt808_port = os.environ.get('JT808_PORT')
+    if jt808_port is not None:
+        try:
+            default_config['jt808_port'] = int(jt808_port)
+        except ValueError:
+            logger.warning(f"Invalid JT808_PORT value: {jt808_port}, using default")
+    # Keep existing port if not specified in environment variables
     
     if broker_type.lower() == 'aws':
         # AWS IoT Configuration
         logger.info("Using AWS IoT MQTT broker configuration")
         default_config['mqtt_broker_type'] = 'aws'
         default_config['mqtt_host'] = os.environ.get('AWS_MQTT_ENDPOINT')
-        default_config['mqtt_port'] = int(os.environ.get('AWS_MQTT_PORT', 8883))
+        
+        # Safely convert port to integer
+        aws_mqtt_port = os.environ.get('AWS_MQTT_PORT', '8883')
+        try:
+            default_config['mqtt_port'] = int(aws_mqtt_port)
+        except ValueError:
+            logger.warning(f"Invalid AWS_MQTT_PORT value: {aws_mqtt_port}, using default 8883")
+            default_config['mqtt_port'] = 8883
         default_config['mqtt_client_id'] = os.environ.get('AWS_MQTT_CLIENT_ID', default_config.get('mqtt_client_id'))
         default_config['mqtt_topic_prefix'] = os.environ.get('AWS_MQTT_TOPIC_PREFIX', 'pettracker')
         
@@ -811,7 +827,14 @@ def load_config():
         logger.info("Using local MQTT broker configuration")
         default_config['mqtt_broker_type'] = 'local'
         default_config['mqtt_host'] = os.environ.get('LOCAL_MQTT_HOST', 'localhost')
-        default_config['mqtt_port'] = int(os.environ.get('LOCAL_MQTT_PORT', 1883))
+        
+        # Safely convert port to integer
+        local_mqtt_port = os.environ.get('LOCAL_MQTT_PORT', '1883')
+        try:
+            default_config['mqtt_port'] = int(local_mqtt_port)
+        except ValueError:
+            logger.warning(f"Invalid LOCAL_MQTT_PORT value: {local_mqtt_port}, using default 1883")
+            default_config['mqtt_port'] = 1883
         default_config['mqtt_user'] = os.environ.get('LOCAL_MQTT_USER', '')
         default_config['mqtt_password'] = os.environ.get('LOCAL_MQTT_PASSWORD', '')
         default_config['mqtt_topic_prefix'] = os.environ.get('LOCAL_MQTT_TOPIC_PREFIX', 'pettracker')
