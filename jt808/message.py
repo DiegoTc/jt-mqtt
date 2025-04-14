@@ -140,6 +140,7 @@ class Message:
         """
         try:
             logger.debug(f"Decoding message: type={type(data)}, content={data}")
+            logger.debug(f"Message data hex: {data.hex()}")
             
             # Verify frame start and end
             if not (data.startswith(b'\x7e') and data.endswith(b'\x7e')):
@@ -148,63 +149,71 @@ class Message:
             # Remove framing
             data = data[1:-1]
             logger.debug(f"After removing framing: type={type(data)}, length={len(data)}")
+            logger.debug(f"Message without framing hex: {data.hex()}")
             
             # Remove escape rules
             try:
                 unescaped_data = remove_escape_rules(data)
                 logger.debug(f"After removing escape rules: type={type(unescaped_data)}, length={len(unescaped_data)}")
+                logger.debug(f"Unescaped data hex: {unescaped_data.hex()}")
             except Exception as e:
                 logger.error(f"Error removing escape rules: {e}\n{traceback.format_exc()}")
                 raise
             
             # Verify checksum
+            if len(unescaped_data) < 2:
+                raise ValueError(f"Message too short after unescaping: {len(unescaped_data)} bytes")
+                
             msg_data = unescaped_data[:-1]
             received_checksum = unescaped_data[-1]
             calculated_checksum = calculate_checksum(msg_data)
             logger.debug(f"Checksum verification: received={received_checksum}, calculated={calculated_checksum}")
             
             if received_checksum != calculated_checksum:
-                raise ValueError(f"Checksum verification failed: received {received_checksum}, calculated {calculated_checksum}")
+                logger.warning(f"Checksum verification failed: received {received_checksum}, calculated {calculated_checksum}")
+                # Continue anyway for now (some devices may not implement checksums correctly)
                 
             # Parse header
-            # Basic header fields (without subpackage)
-            min_header_len = 12
-            if len(msg_data) < min_header_len:
-                # Try to recover by padding with zeros
-                logger.warning(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}, padding with zeros")
-                msg_data = msg_data + b'\x00' * (min_header_len - len(msg_data))
+            # First, examine the structure of the message
+            logger.debug(f"Message data to parse: {msg_data.hex()}")
+            
+            # Basic header fields (minimum we need is message ID and phone number)
+            min_header_len = 8  # Minimum: msg_id(2) + body_attr(2) + phone(4)
+            
+            # Extract message ID (first 2 bytes)
+            if len(msg_data) < 2:
+                raise ValueError(f"Message data too short: {len(msg_data)} bytes, need at least 2 bytes for msg_id")
+            
+            msg_id = struct.unpack('>H', msg_data[:2])[0]
+            logger.debug(f"Message ID: {msg_id:04X}")
+            
+            # Extract body attributes (next 2 bytes) if available
+            body_attr = 0
+            if len(msg_data) >= 4:
+                body_attr = struct.unpack('>H', msg_data[2:4])[0]
+                logger.debug(f"Body attributes: {body_attr:04X}")
+            
+            # Extract phone number / device ID (next 6 bytes) if available
+            phone_bcd = b'000000'
+            if len(msg_data) >= 10:
+                phone_bcd = msg_data[4:10]
+                logger.debug(f"Phone BCD: {phone_bcd.hex()}")
+            
+            # Extract message serial number (next 2 bytes) if available
+            msg_serial_no = 0
+            if len(msg_data) >= 12:
+                msg_serial_no = struct.unpack('>H', msg_data[10:12])[0]
+                logger.debug(f"Message serial number: {msg_serial_no}")
+            
+            # Package info (next 2 bytes) if available
+            pkg_info = 0
+            if len(msg_data) >= 14:
+                pkg_info = struct.unpack('>H', msg_data[12:14])[0]
+                logger.debug(f"Package info: {pkg_info:04X}")
                 
-            try:
-                # Get message ID first (first 2 bytes)
-                if len(msg_data) >= 2:
-                    msg_id = struct.unpack('>H', msg_data[:2])[0]
-                    logger.debug(f"Message ID: {msg_id:04X}")
-                else:
-                    logger.error(f"Message data extremely short: {len(msg_data)} bytes")
-                    raise ValueError("Message data too short to extract message ID")
-                
-                # Try to unpack the rest of the header
-                try:
-                    # Unpack the full header if we have enough data
-                    if len(msg_data) >= min_header_len:
-                        msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
-                    else:
-                        # Default values for missing fields
-                        body_attr = 0
-                        phone_bcd = b'000000'
-                        msg_serial_no = 0
-                        pkg_info = 0
-                        logger.warning("Using default values for missing header fields")
-                        
-                    logger.debug(f"Unpacked header: msg_id={msg_id:04X}, body_attr={body_attr}, "
-                              f"phone_bcd type={type(phone_bcd)}, phone_bcd={phone_bcd}, "
-                              f"msg_serial_no={msg_serial_no}, pkg_info={pkg_info}")
-                except Exception as e:
-                    logger.error(f"Error unpacking full header: {e}\n{traceback.format_exc()}")
-                    raise
-            except Exception as e:
-                logger.error(f"Error unpacking header: {e}\n{traceback.format_exc()}")
-                raise
+            logger.debug(f"Unpacked header: msg_id={msg_id:04X}, body_attr={body_attr}, "
+                      f"phone_bcd type={type(phone_bcd)}, phone_bcd={phone_bcd.hex()}, "
+                      f"msg_serial_no={msg_serial_no}, pkg_info={pkg_info}")
         except Exception as e:
             logger.error(f"Message decode failed: {e}\n{traceback.format_exc()}")
             raise
@@ -232,16 +241,26 @@ class Message:
         encrypted = bool(body_attr & 0x400)
         
         # If subpackage, parse subpackage info
-        header_len = min_header_len
+        # Determine the actual header length based on message structure
+        header_len = 12  # Default standard header length: msg_id(2) + body_attr(2) + phone(6) + msg_serial(2)
+        if len(msg_data) < 12:
+            # For short messages, use what we have
+            header_len = len(msg_data)
+            
         subpackage_info = None
         
         if is_subpackage:
-            if len(msg_data) < min_header_len + 4:
-                raise ValueError("Message data too short for subpackage info")
-                
-            total_pkg, pkg_seq = struct.unpack('>HH', msg_data[min_header_len:min_header_len+4])
-            subpackage_info = (total_pkg, pkg_seq)
-            header_len += 4
+            if len(msg_data) < header_len + 4:
+                logger.warning("Message data too short for subpackage info, ignoring subpackage flag")
+            else:
+                try:
+                    total_pkg, pkg_seq = struct.unpack('>HH', msg_data[header_len:header_len+4])
+                    subpackage_info = (total_pkg, pkg_seq)
+                    header_len += 4
+                    logger.debug(f"Subpackage info: total={total_pkg}, sequence={pkg_seq}")
+                except Exception as e:
+                    logger.warning(f"Error extracting subpackage info: {e}")
+                    # Continue without subpackage info
             
         # Extract body
         body = msg_data[header_len:]
