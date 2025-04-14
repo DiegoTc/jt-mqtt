@@ -209,9 +209,17 @@ class GPSTrackingSimulator:
                     else:
                         # Send normal location report
                         logger.info(f"Sending location: {self.latitude}, {self.longitude}")
+                        # Ensure values are of correct types
+                        int_altitude = int(self.altitude)
+                        int_speed = int(self.speed)
+                        int_direction = int(self.direction)
+                        int_alarm = int(self.alarm)
+                        int_status = int(self.status)
+                        
+                        # Send with proper typing
                         self.protocol.send_location(
-                            self.latitude, self.longitude, self.altitude, 
-                            self.speed, self.direction, self.alarm, self.status,
+                            self.latitude, self.longitude, int_altitude, 
+                            int_speed, int_direction, int_alarm, int_status,
                             additional_info
                         )
                     
@@ -274,8 +282,8 @@ def load_config():
         'device_id': '123456789012',
         'server_ip': '127.0.0.1',  # Use localhost to connect to the server
         'server_port': 8008,      # Updated to match converter port
-        'start_latitude': 39.908722,
-        'start_longitude': 116.397499,
+        'start_latitude': 15.5042,  # Honduras coordinates
+        'start_longitude': -88.0250,  # Honduras coordinates
         'altitude': 100,
         'speed': 60,
         'direction': 45,
