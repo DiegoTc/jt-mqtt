@@ -1,0 +1,69 @@
+Converter: Process started automatically by web interface
+
+Converter: 2025-04-14 12:52:02,582 - jt808-converter - INFO - Successfully imported all modules
+
+Converter: 2025-04-14 12:52:02,584 - jt808-converter - INFO - Loaded configuration from config.json
+
+Converter: /home/runner/workspace/converter.py:827: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+
+Converter: mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'jt808_converter'))
+
+Converter: 2025-04-14 12:52:02,584 - jt808-converter - WARNING - Failed to connect to MQTT broker: [Errno 99] Cannot assign requested address
+
+Converter: 2025-04-14 12:52:02,584 - jt808-converter - WARNING - Continuing in simulation mode without MQTT
+
+Converter: 2025-04-14 12:52:02,585 - jt808-converter - INFO - JT808 Server listening on 0.0.0.0:8008
+
+Converter: 2025-04-14 12:52:05,933 - jt808-converter - INFO - New connection from 127.0.0.1:43862
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Raw message data: bytearray(b'~\x01\x00\x00*123456\x00\x01\x00\x00\x00\x0b\x00\x01SIMULSIM808\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00SIM0001\x00\x04DEMO_~')
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Raw message data length: 59 bytes
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Raw message data hex: 7e0100002a31323334353600010000000b000153494d554c53494d383038000000000000000000000000000053494d30303031000444454d4f5f7e
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - INFO - Client ('127.0.0.1', 43862) identified as device 123456
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Received message from 123456: 0100, length: 44 bytes
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - INFO - Registration from 123456
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Generated auth code for 123456: 123456
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Registration response body: 00010006313233343536
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Registration response encoded: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - INFO - Sent registration response to 123456: result=0, auth_code='123456'
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/registration: {'device_id': '123456', 'timestamp': '2025-04-14T12:52:05.934618', 'event': 'registration', 'province_id': 0, 'city_id': 11, 'manufacturer_id': '\x01SIM', 'terminal_model': 'ULSIM808', 'terminal_id': 'SIM00', 'license_plate_color': 48, 'license_plate': ''}
+
+Converter: 2025-04-14 12:52:05,934 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/status: {'device_id': '123456', 'timestamp': '2025-04-14T12:52:05.934661', 'status': 'online'}
+
+Converter: 2025-04-14 13:05:46,405 - jt808-converter - INFO - New connection from 127.0.0.1:60010
+
+Converter: 2025-04-14 13:05:46,405 - jt808-converter - DEBUG - Raw message data: bytearray(b'~\x01\x00\x00*123456\x00\x01\x00\x00\x00\x0b\x00\x01SIMULSIM808\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00SIM0001\x00\x04DEMO_~')
+
+Converter: 2025-04-14 13:05:46,405 - jt808-converter - DEBUG - Raw message data length: 59 bytes
+
+Converter: 2025-04-14 13:05:46,405 - jt808-converter - DEBUG - Raw message data hex: 7e0100002a31323334353600010000000b000153494d554c53494d383038000000000000000000000000000053494d30303031000444454d4f5f7e
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - INFO - Client ('127.0.0.1', 60010) identified as device 123456
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - DEBUG - Received message from 123456: 0100, length: 44 bytes
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - INFO - Registration from 123456
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - DEBUG - Generated auth code for 123456: 123456
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - DEBUG - Registration response body: 00010006313233343536
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - DEBUG - Registration response encoded: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Converter: 2025-04-14 13:05:46,406 - jt808-converter - INFO - Sent registration response to 123456: result=0, auth_code='123456'
+
+Converter: 2025-04-14 13:05:46,407 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/registration: {'device_id': '123456', 'timestamp': '2025-04-14T13:05:46.406989', 'event': 'registration', 'province_id': 0, 'city_id': 11, 'manufacturer_id': '\x01SIM', 'terminal_model': 'ULSIM808', 'terminal_id': 'SIM00', 'license_plate_color': 48, 'license_plate': ''}
+
+Converter: 2025-04-14 13:05:46,407 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/status: {'device_id': '123456', 'timestamp': '2025-04-14T13:05:46.407057', 'status': 'online'}
+
+Map View

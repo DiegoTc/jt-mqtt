@@ -47,12 +47,12 @@ class GPSTrackingSimulator:
         self.location_thread = None
         self.heartbeat_thread = None
         
-        # Current location
-        self.latitude = config.get('start_latitude', 39.908722)
-        self.longitude = config.get('start_longitude', 116.397499)
-        self.altitude = config.get('altitude', 100)
-        self.speed = config.get('speed', 0)
-        self.direction = config.get('direction', 0)
+        # Current location - ensure all values are properly typed
+        self.latitude = float(config.get('start_latitude', 15.5042))  # Honduras as default
+        self.longitude = float(config.get('start_longitude', -88.0250))  # Honduras as default
+        self.altitude = int(config.get('altitude', 100))
+        self.speed = int(config.get('speed', 0))
+        self.direction = int(config.get('direction', 0))
         
         # Move parameters
         self.move = config.get('move', True)

@@ -318,10 +318,30 @@ class JT808Protocol:
         Returns:
             True if the location report message was sent successfully, False otherwise
         """
-        message = Message.create_location_report(
-            self.device_id, alarm_flag, status, latitude, longitude, altitude, 
-            speed, direction, None, additional_info, self._get_next_serial_no()
-        )
+        # Ensure parameters are of the correct type
+        try:
+            # Convert float coordinates to decimal degrees
+            float_lat = float(latitude)
+            float_lon = float(longitude)
+            
+            # Make sure numeric values are integers
+            int_altitude = int(altitude)
+            int_speed = int(speed)
+            int_direction = int(direction)
+            int_alarm_flag = int(alarm_flag)
+            int_status = int(status)
+            
+            # Log the parameters for debugging
+            self.logger.debug(f"Sending location: lat={float_lat}, lon={float_lon}, alt={int_altitude}, " +
+                             f"speed={int_speed}, dir={int_direction}, alarm={int_alarm_flag}, status={int_status}")
+            
+            message = Message.create_location_report(
+                self.device_id, int_alarm_flag, int_status, float_lat, float_lon, int_altitude, 
+                int_speed, int_direction, None, additional_info, self._get_next_serial_no()
+            )
+        except Exception as e:
+            self.logger.error(f"Error preparing location data: {e}")
+            return False
         
         return self.send_message(message)
         

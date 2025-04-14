@@ -1,0 +1,163 @@
+Simulator: Process started successfully
+
+Simulator: 2025-04-14 13:05:46,404 - jt808-simulator - INFO - Loaded configuration from config.json
+
+Simulator: 2025-04-14 13:05:46,404 - jt808-simulator - INFO - Starting GPS simulator with device ID: 123456789012
+
+Simulator: 2025-04-14 13:05:46,405 - jt808-simulator - INFO - Connected to 127.0.0.1:8008
+
+Simulator: 2025-04-14 13:05:46,405 - jt808-simulator - INFO - Registering terminal...
+
+Simulator: 2025-04-14 13:05:46,405 - jt808-simulator - DEBUG - Sent message: 0100, length: 59 bytes
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Decoding message: type=<class 'bytearray'>, content=bytearray(b'~\x81\x00\x00\n000000\x00\x00\x00\x00\x00\x01\x00\x06123456\x8b~')
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Message data hex: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - After removing framing: type=<class 'bytearray'>, length=25
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Message without framing hex: 8100000a30303030303000000000000100063132333435368b
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.utils - DEBUG - remove_escape_rules: input data type=<class 'bytearray'>, length=25
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.utils - DEBUG - remove_escape_rules: output data type=<class 'bytes'>, length=25
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - After removing escape rules: type=<class 'bytes'>, length=25
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Unescaped data hex: 8100000a30303030303000000000000100063132333435368b
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Checksum verification: received=139, calculated=139
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Message data to parse: 8100000a3030303030300000000000010006313233343536
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Message ID: 8100
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Body attributes: 000A
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Phone BCD: 303030303030
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Message serial number: 0
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Package info: 0000
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Unpacked header: msg_id=8100, body_attr=10, phone_bcd type=<class 'bytes'>, phone_bcd=303030303030, msg_serial_no=0, pkg_info=0
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Message body hex: 000000010006313233343536, length: 12
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Registration response body: 000000010006313233343536
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Auth code length byte: 1
+
+Simulator: 2025-04-14 13:05:46,406 - jt808.message - DEBUG - Extracted auth code: '', bytes: 00
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - DEBUG - Received message: 8100, length: 27 bytes
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - DEBUG - Registration response received: body_len=12, full_hex=000000010006313233343536
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - DEBUG - Registration response: serial_no=0, result=0
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - DEBUG - Auth code length byte: 1
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - DEBUG - Auth code bytes: 00
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - INFO - Registration successful, auth code: ''
+
+Simulator: 2025-04-14 13:05:46,407 - jt808-simulator - DEBUG - Sent message: 0102, length: 19 bytes
+
+Simulator: 2025-04-14 13:05:46,505 - jt808-simulator - INFO - Received authentication code: 
+
+Simulator: 2025-04-14 13:05:46,506 - jt808-simulator - INFO - Authenticating terminal...
+
+Simulator: 2025-04-14 13:05:46,506 - jt808-simulator - DEBUG - Sent message: 0102, length: 19 bytes
+
+Simulator: 2025-04-14 13:05:56,517 - jt808-simulator - WARNING - Authentication response not received, proceeding anyway for testing purposes
+
+Simulator: 2025-04-14 13:05:56,517 - jt808-simulator - INFO - Authentication successful
+
+Simulator: 2025-04-14 13:05:56,517 - jt808-simulator - INFO - Starting heartbeat loop, interval: 60s
+
+Simulator: 2025-04-14 13:05:56,517 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-14 13:05:56,518 - jt808-simulator - DEBUG - Sent message: 0002, length: 17 bytes
+
+Simulator: 2025-04-14 13:05:56,518 - jt808-simulator - INFO - Starting location loop, interval: 10s
+
+Simulator: 2025-04-14 13:05:56,518 - jt808-simulator - INFO - Sending location: 39.908757355339056, 116.39753435533906
+
+Simulator ERROR: 2025-04-14 13:05:56,518 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:01,518 - jt808-simulator - INFO - Sending location: 39.908794474499075, 116.39756785411456
+
+Simulator ERROR: 2025-04-14 13:06:01,518 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:06,519 - jt808-simulator - INFO - Sending location: 39.908830249064685, 116.39760278519606
+
+Simulator ERROR: 2025-04-14 13:06:06,519 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:11,519 - jt808-simulator - INFO - Sending location: 39.90886254715311, 116.39764095368416
+
+Simulator ERROR: 2025-04-14 13:06:11,519 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:16,519 - jt808-simulator - INFO - Sending location: 39.90889811082801, 116.39767609945243
+
+Simulator ERROR: 2025-04-14 13:06:16,519 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:21,520 - jt808-simulator - INFO - Sending location: 39.908936599641365, 116.39770801514209
+
+Simulator ERROR: 2025-04-14 13:06:21,520 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:26,520 - jt808-simulator - INFO - Sending location: 39.90896941863411, 116.39774573667063
+
+Simulator ERROR: 2025-04-14 13:06:26,520 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:31,520 - jt808-simulator - INFO - Sending location: 39.90900161050598, 116.39778399478591
+
+Simulator ERROR: 2025-04-14 13:06:31,520 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:36,520 - jt808-simulator - INFO - Sending location: 39.90903813716318, 116.39781813864793
+
+Simulator ERROR: 2025-04-14 13:06:36,521 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:41,521 - jt808-simulator - INFO - Sending location: 39.909068486204674, 116.39785787447157
+
+Simulator ERROR: 2025-04-14 13:06:41,521 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:46,521 - jt808-simulator - INFO - Sending location: 39.90910433904375, 116.39789272520945
+
+Simulator ERROR: 2025-04-14 13:06:46,521 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:51,521 - jt808-simulator - INFO - Sending location: 39.90913756259825, 116.39793009090798
+
+Simulator ERROR: 2025-04-14 13:06:51,521 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:56,523 - jt808-simulator - INFO - Sending location: 39.90917140046872, 116.39796690121254
+
+Simulator ERROR: 2025-04-14 13:06:56,523 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:06:56,524 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-14 13:06:56,524 - jt808-simulator - DEBUG - Sent message: 0002, length: 17 bytes
+
+Simulator: 2025-04-14 13:07:01,524 - jt808-simulator - INFO - Sending location: 39.909202964103315, 116.39800567926008
+
+Simulator ERROR: 2025-04-14 13:07:01,524 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:07:06,524 - jt808-simulator - INFO - Sending location: 39.909231709196355, 116.3980465903787
+
+Simulator ERROR: 2025-04-14 13:07:06,524 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:07:11,524 - jt808-simulator - INFO - Sending location: 39.909266509214675, 116.39808249245002
+
+Simulator ERROR: 2025-04-14 13:07:11,524 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:07:16,525 - jt808-simulator - INFO - Sending location: 39.90930579886529, 116.39811341692825
+
+Simulator ERROR: 2025-04-14 13:07:16,525 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:07:21,525 - jt808-simulator - INFO - Sending location: 39.90934352410348, 116.39814623165671
+
+Simulator ERROR: 2025-04-14 13:07:21,525 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
+
+Simulator: 2025-04-14 13:07:26,525 - jt808-simulator - INFO - Sending location: 39.909383392850295, 116.398176405868
+
+Simulator ERROR: 2025-04-14 13:07:26,525 - jt808-simulator - ERROR - Error in location loop: required argument is not an integer
