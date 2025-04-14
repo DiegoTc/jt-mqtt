@@ -18,6 +18,10 @@ try:
     import traceback
     import paho.mqtt.client as mqtt
     from datetime import datetime
+    import dotenv
+    
+    # Load environment variables from .env file
+    dotenv.load_dotenv()
     
     # Configure basic logging before importing modules that might use it
     logging.basicConfig(
@@ -756,18 +760,16 @@ def on_publish(client, userdata, mid):
     pass  # Can be used for QoS tracking
 
 def load_config():
-    """Load configuration from file or use defaults"""
+    """Load configuration from file or env vars, with appropriate defaults"""
+    # Start with default configuration
     default_config = {
         'jt808_host': '0.0.0.0',
-        'jt808_port': 8008,  # Updated to match config.json
-        'mqtt_host': 'localhost',
-        'mqtt_port': 1883,
-        'mqtt_user': '',
-        'mqtt_password': '',
-        'mqtt_topic_prefix': 'jt808',
-        'mqtt_client_id': f'jt808-converter-{os.getpid()}'
+        'jt808_port': 8008,
+        'mqtt_broker_type': 'local',  # Default to local Mosquitto
+        'mqtt_client_id': f'pettracker-converter-{os.getpid()}'
     }
     
+    # Load from config.json if available
     try:
         if os.path.exists('config.json'):
             with open('config.json', 'r') as f:
@@ -777,7 +779,44 @@ def load_config():
                 logger.info("Loaded configuration from config.json")
     except Exception as e:
         logger.warning(f"Failed to load config.json: {e}")
+    
+    # Determine broker type from environment or config
+    broker_type = os.environ.get('MQTT_BROKER_TYPE', default_config.get('mqtt_broker_type', 'local'))
+    
+    # Load JT808 settings from environment
+    default_config['jt808_host'] = os.environ.get('JT808_HOST', default_config.get('jt808_host'))
+    default_config['jt808_port'] = int(os.environ.get('JT808_PORT', default_config.get('jt808_port')))
+    
+    if broker_type.lower() == 'aws':
+        # AWS IoT Configuration
+        logger.info("Using AWS IoT MQTT broker configuration")
+        default_config['mqtt_broker_type'] = 'aws'
+        default_config['mqtt_host'] = os.environ.get('AWS_MQTT_ENDPOINT')
+        default_config['mqtt_port'] = int(os.environ.get('AWS_MQTT_PORT', 8883))
+        default_config['mqtt_client_id'] = os.environ.get('AWS_MQTT_CLIENT_ID', default_config.get('mqtt_client_id'))
+        default_config['mqtt_topic_prefix'] = os.environ.get('AWS_MQTT_TOPIC_PREFIX', 'pettracker')
         
+        # AWS IoT certificate paths
+        default_config['mqtt_ca_file'] = os.environ.get('AWS_MQTT_CA_FILE', './certs/AmazonRootCA1.pem')
+        default_config['mqtt_cert_file'] = os.environ.get('AWS_MQTT_CERT_FILE', './certs/certificate.pem.crt')
+        default_config['mqtt_key_file'] = os.environ.get('AWS_MQTT_KEY_FILE', './certs/private.pem.key')
+        
+        # Check if required AWS IoT files exist
+        for file_key in ['mqtt_ca_file', 'mqtt_cert_file', 'mqtt_key_file']:
+            file_path = default_config[file_key]
+            if not os.path.exists(file_path):
+                logger.warning(f"AWS IoT certificate file {file_path} not found")
+    else:
+        # Local Mosquitto Configuration
+        logger.info("Using local MQTT broker configuration")
+        default_config['mqtt_broker_type'] = 'local'
+        default_config['mqtt_host'] = os.environ.get('LOCAL_MQTT_HOST', 'localhost')
+        default_config['mqtt_port'] = int(os.environ.get('LOCAL_MQTT_PORT', 1883))
+        default_config['mqtt_user'] = os.environ.get('LOCAL_MQTT_USER', '')
+        default_config['mqtt_password'] = os.environ.get('LOCAL_MQTT_PASSWORD', '')
+        default_config['mqtt_topic_prefix'] = os.environ.get('LOCAL_MQTT_TOPIC_PREFIX', 'pettracker')
+    
+    logger.info(f"Using MQTT broker: {default_config['mqtt_host']}:{default_config['mqtt_port']}")
     return default_config
 
 def parse_args():
@@ -824,24 +863,68 @@ def main():
         
     # Initialize MQTT client
     try:
-        mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'jt808_converter'))
-        mqtt_client.on_connect = on_connect
-        mqtt_client.on_disconnect = on_disconnect
-        mqtt_client.on_publish = on_publish
+        mqtt_connected = False
         
-        if config.get('mqtt_user') and config.get('mqtt_password'):
-            mqtt_client.username_pw_set(config['mqtt_user'], config['mqtt_password'])
+        if config.get('mqtt_broker_type', 'local').lower() == 'aws':
+            # AWS IoT MQTT client setup
+            logger.info("Setting up AWS IoT MQTT client")
             
-        # Connect to MQTT broker
-        try:
-            mqtt_client.connect(config['mqtt_host'], config['mqtt_port'])
-            mqtt_client.loop_start()
-            logger.info(f"Connected to MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
-            mqtt_connected = True
-        except Exception as e:
-            logger.warning(f"Failed to connect to MQTT broker: {e}")
-            logger.warning("Continuing in simulation mode without MQTT")
-            mqtt_connected = False
+            # Check if all required certificate files exist
+            cert_files_exist = True
+            for file_key in ['mqtt_ca_file', 'mqtt_cert_file', 'mqtt_key_file']:
+                file_path = config.get(file_key)
+                if not file_path or not os.path.exists(file_path):
+                    logger.error(f"AWS IoT certificate file '{file_key}' not found: {file_path}")
+                    cert_files_exist = False
+            
+            if not cert_files_exist:
+                logger.error("Cannot connect to AWS IoT: missing certificate files")
+                mqtt_client = None
+            else:
+                # Create MQTT client with TLS/SSL support for AWS IoT
+                mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id'), protocol=mqtt.MQTTv5)
+                mqtt_client.on_connect = on_connect
+                mqtt_client.on_disconnect = on_disconnect
+                mqtt_client.on_publish = on_publish
+                
+                # Configure TLS with AWS IoT certificates
+                mqtt_client.tls_set(
+                    ca_certs=config.get('mqtt_ca_file'),
+                    certfile=config.get('mqtt_cert_file'),
+                    keyfile=config.get('mqtt_key_file'),
+                    tls_version=ssl.PROTOCOL_TLSv1_2
+                )
+                
+                # Connect to AWS IoT endpoint
+                try:
+                    mqtt_client.connect(config['mqtt_host'], config['mqtt_port'])
+                    mqtt_client.loop_start()
+                    logger.info(f"Connected to AWS IoT MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
+                    mqtt_connected = True
+                except Exception as e:
+                    logger.error(f"Failed to connect to AWS IoT MQTT broker: {e}")
+                    logger.warning("Continuing in simulation mode without MQTT")
+        else:
+            # Local Mosquitto MQTT client setup
+            logger.info("Setting up local MQTT client")
+            mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'pettracker_converter'))
+            mqtt_client.on_connect = on_connect
+            mqtt_client.on_disconnect = on_disconnect
+            mqtt_client.on_publish = on_publish
+            
+            # Configure authentication if credentials are provided
+            if config.get('mqtt_user') and config.get('mqtt_password'):
+                mqtt_client.username_pw_set(config['mqtt_user'], config['mqtt_password'])
+                
+            # Connect to local MQTT broker
+            try:
+                mqtt_client.connect(config['mqtt_host'], config['mqtt_port'])
+                mqtt_client.loop_start()
+                logger.info(f"Connected to local MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
+                mqtt_connected = True
+            except Exception as e:
+                logger.warning(f"Failed to connect to local MQTT broker: {e}")
+                logger.warning("Continuing in simulation mode without MQTT")
     except Exception as e:
         logger.warning(f"Failed to initialize MQTT client: {e}")
         logger.warning("Continuing in simulation mode without MQTT")
