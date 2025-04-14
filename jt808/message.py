@@ -52,11 +52,18 @@ class Message:
         Returns:
             The encoded message as bytes
         """
+        # Prepare the phone number (device ID)
+        # Ensure we only use the last 12 digits (6 bytes) if phone_no is longer
+        phone_str = str(self.phone_no)
+        if len(phone_str) > 12:
+            phone_str = phone_str[-12:]  # Take the last 12 digits
+        phone_bytes = bytes(f'{phone_str:012d}', 'ascii')
+        
         # Prepare message header
         msg_header = struct.pack('>HH6sHH',
                                 self.msg_id,
                                 self.get_body_attr(),
-                                bytes(f'{self.phone_no:012d}', 'ascii'),
+                                phone_bytes,
                                 self.msg_serial_no,
                                 0x00)  # Default packet count and packet number
         
@@ -114,7 +121,13 @@ class Message:
             raise ValueError(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}")
             
         msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
-        phone_no = phone_bcd.decode('ascii')
+        # Make sure we're handling the phone number correctly (it's already in bytes format)
+        try:
+            # If it's in BCD format
+            phone_no = phone_bcd.decode('ascii')
+        except Exception as e:
+            # As a fallback, try to represent the bytes directly
+            phone_no = ''.join([f'{b:02x}' for b in phone_bcd]).upper()
         
         # Check if subpackage
         is_subpackage = bool(body_attr & 0x2000)
