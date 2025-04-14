@@ -309,11 +309,33 @@ def run_converter_in_background():
     except Exception as e:
         logger.error(f"Failed to start JT808 converter automatically: {e}")
 
-if __name__ == '__main__':
+# Initialize the application on first request
+# For newer Flask versions, we use this pattern instead of before_first_request
+@app.route('/initialize', methods=['GET'])
+def initialize_app():
+    """Initialize the application - this is called automatically on first load"""
+    logger.info("Initializing the application")
+    # Create templates directory if it doesn't exist
+    os.makedirs('templates', exist_ok=True)
+    
+    # Run the converter in the background
+    run_converter_in_background()
+    logger.info("Application initialization complete")
+    return jsonify({'status': 'success', 'message': 'Application initialized'})
+
+# Auto-start converter when the application is loaded
+with app.app_context():
     # Create templates directory if it doesn't exist
     os.makedirs('templates', exist_ok=True)
     
     # Run the converter in the background at startup
+    run_converter_in_background()
+
+if __name__ == '__main__':
+    # Create templates directory if it doesn't exist
+    os.makedirs('templates', exist_ok=True)
+    
+    # When running directly (not through gunicorn), start the converter immediately
     run_converter_in_background()
     
     app.run(debug=True, host='0.0.0.0', port=8080)

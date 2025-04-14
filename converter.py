@@ -256,6 +256,7 @@ class JT808Server:
         elif message.msg_id == MessageID.TERMINAL_REGISTRATION:
             logger.info(f"Registration from {device_id}")
             auth_code = "123456"  # In a real system, this would be generated or fetched
+            logger.debug(f"Generated auth code for {device_id}: {auth_code}")
             self._send_registration_response(client_socket, message, 0, auth_code)
             self._publish_registration(device_id, message)
             
@@ -327,7 +328,11 @@ class JT808Server:
                 body
             )
             
-            client_socket.sendall(response.encode())
+            encoded_response = response.encode()
+            logger.debug(f"Registration response body: {body.hex()}")
+            logger.debug(f"Registration response encoded: {encoded_response.hex()}")
+            
+            client_socket.sendall(encoded_response)
             logger.debug(f"Sent registration response to {message.phone_no}: result={result}, auth_code={auth_code}")
         except Exception as e:
             logger.error(f"Failed to send registration response: {e}")
