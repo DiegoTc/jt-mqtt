@@ -265,6 +265,30 @@ class Message:
         # Extract body
         body = msg_data[header_len:]
         
+        # Debug: Log the body hex and length
+        logger.debug(f"Message body hex: {body.hex() if body else 'empty'}, length: {len(body)}")
+        
+        # For registration response messages, do detailed logging of auth code
+        if msg_id == MessageID.TERMINAL_REGISTRATION_RESPONSE and len(body) >= 3:
+            logger.debug(f"Registration response body: {body.hex()}")
+            result_code = body[2]
+            
+            # Check if we have an auth code
+            if len(body) > 3:
+                auth_len = body[3]
+                logger.debug(f"Auth code length byte: {auth_len}")
+                
+                if 4 + auth_len <= len(body):
+                    auth_bytes = body[4:4+auth_len]
+                    try:
+                        auth_code = auth_bytes.decode('utf-8')
+                        logger.debug(f"Extracted auth code: '{auth_code}', bytes: {auth_bytes.hex()}")
+                    except Exception as e:
+                        logger.warning(f"Failed to decode auth code: {e}")
+                        logger.debug(f"Auth code raw bytes: {auth_bytes.hex()}")
+            else:
+                logger.warning("Registration response does not contain auth code")
+        
         return cls(msg_id, phone_no, body, msg_serial_no, is_subpackage, encrypted, subpackage_info)
 
     # Helper methods for common messages

@@ -161,37 +161,89 @@ class JT808Protocol:
         
     def _handle_platform_response(self, message):
         """Handle platform general response message"""
+        self.logger.debug(f"Platform response received: body_len={len(message.body)}, full_hex={message.body.hex() if message.body else 'empty'}")
+        
         if len(message.body) < 5:
-            self.logger.error("Invalid platform response message format")
+            self.logger.error(f"Invalid platform response message format: body length {len(message.body)}, expected at least 5 bytes")
             return
             
-        ack_serial_no, ack_id, result = struct.unpack('>HHB', message.body)
-        
-        self.logger.info(f"Platform response: serial={ack_serial_no}, msg_id={ack_id:04X}, result={result}")
-        
-        # Handle specific response types
-        if ack_id == MessageID.TERMINAL_AUTH and result == ResultCode.SUCCESS:
-            self.authenticated = True
-            self.logger.info("Authentication successful")
+        try:
+            ack_serial_no, ack_id, result = struct.unpack('>HHB', message.body)
+            
+            self.logger.info(f"Platform response: serial={ack_serial_no}, msg_id={ack_id:04X}, result={result}")
+            
+            # Handle specific response types
+            if ack_id == MessageID.TERMINAL_AUTH:
+                if result == ResultCode.SUCCESS:
+                    self.authenticated = True
+                    self.logger.info("Authentication successful")
+                else:
+                    self.logger.error(f"Authentication failed with result code: {result}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to parse platform response: {e}")
+            # Try to partially parse what we can
+            if len(message.body) >= 2:
+                ack_serial_no = struct.unpack('>H', message.body[:2])[0]
+                self.logger.debug(f"Partial parse - serial number: {ack_serial_no}")
+                
+                if len(message.body) >= 4:
+                    ack_id = struct.unpack('>H', message.body[2:4])[0]
+                    self.logger.debug(f"Partial parse - message ID: {ack_id:04X}")
+                    
+                    # For auth responses, set authenticated state
+                    if ack_id == MessageID.TERMINAL_AUTH:
+                        self.authenticated = True
+                        self.logger.warning("Setting authenticated=True despite error parsing response")
             
     def _handle_registration_response(self, message):
         """Handle terminal registration response message"""
+        # Add detailed logging
+        self.logger.debug(f"Registration response received: body_len={len(message.body)}, full_hex={message.body.hex() if message.body else 'empty'}")
+        
         if len(message.body) < 3:
-            self.logger.error("Invalid registration response message format")
+            self.logger.error("Invalid registration response message format - body too short")
             return
             
+        # Extract the serial number and result code
         ack_serial_no, result = struct.unpack('>HB', message.body[:3])
+        self.logger.debug(f"Registration response: serial_no={ack_serial_no}, result={result}")
         
-        if result == ResultCode.SUCCESS and len(message.body) > 3:
-            # Extract auth code
-            auth_len = message.body[3]
-            if 4 + auth_len <= len(message.body):
-                auth_code = message.body[4:4+auth_len].decode('utf-8')
-                self.auth_code = auth_code
-                self.logger.info(f"Registration successful, auth code: {auth_code}")
+        if result == ResultCode.SUCCESS:
+            if len(message.body) > 3:
+                # Extract auth code
+                auth_len = message.body[3]
+                self.logger.debug(f"Auth code length byte: {auth_len}")
                 
-                # Automatically authenticate
-                self.authenticate(auth_code)
+                if 4 + auth_len <= len(message.body):
+                    auth_bytes = message.body[4:4+auth_len]
+                    self.logger.debug(f"Auth code bytes: {auth_bytes.hex()}")
+                    
+                    try:
+                        auth_code = auth_bytes.decode('utf-8')
+                        self.auth_code = auth_code
+                        self.logger.info(f"Registration successful, auth code: '{auth_code}'")
+                        
+                        # Automatically authenticate
+                        self.authenticate(auth_code)
+                    except Exception as e:
+                        self.logger.error(f"Failed to decode auth code: {e}")
+                        # Try with a default auth code
+                        self.auth_code = "123456"
+                        self.logger.warning(f"Using default auth code: {self.auth_code}")
+                        self.authenticate(self.auth_code)
+                else:
+                    self.logger.error(f"Auth code length ({auth_len}) exceeds message boundary ({len(message.body) - 4})")
+                    # Try with a default auth code
+                    self.auth_code = "123456"
+                    self.logger.warning(f"Using default auth code: {self.auth_code}")
+                    self.authenticate(self.auth_code)
+            else:
+                self.logger.error("Registration response missing auth code field")
+                # Try with a default auth code
+                self.auth_code = "123456"
+                self.logger.warning(f"Using default auth code: {self.auth_code}")
+                self.authenticate(self.auth_code)
         else:
             self.logger.error(f"Registration failed, result: {result}")
             

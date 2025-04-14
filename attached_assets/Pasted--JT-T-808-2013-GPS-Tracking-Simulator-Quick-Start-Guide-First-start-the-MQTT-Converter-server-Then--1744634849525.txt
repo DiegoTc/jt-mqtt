@@ -1,0 +1,157 @@
+
+JT/T 808-2013 GPS Tracking Simulator
+Quick Start Guide:
+First start the MQTT Converter server
+Then start the Simulator to begin sending data
+Check the logs below for connection status
+Simulator
+Device ID (IMEI):
+123456789012
+Enter a 12-15 digit IMEI number. If using a 15-digit IMEI, only the last 12 digits will be used for protocol compatibility.
+Start Latitude:
+39.908722
+Start Longitude:
+116.397499
+Simulate Movement
+Speed (km/h):
+60
+Direction (degrees):
+45
+Location Interval (seconds):
+10
+Heartbeat Interval (seconds):
+60
+Enable Batch Reporting
+Batch Size:
+5
+Simulator Log
+Simulator: Process started successfully
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Loaded configuration from config.json
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Starting GPS simulator with device ID: 123456789012
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Connected to 127.0.0.1:8008
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Registering terminal...
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - DEBUG - Sent message: 0100, length: 59 bytes
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Decoding message: type=<class 'bytearray'>, content=bytearray(b'~\x81\x00\x00\n000000\x00\x00\x00\x00\x00\x01\x00\x06123456\x8b~')
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message data hex: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - After removing framing: type=<class 'bytearray'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message without framing hex: 8100000a30303030303000000000000100063132333435368b
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.utils - DEBUG - remove_escape_rules: input data type=<class 'bytearray'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.utils - DEBUG - remove_escape_rules: output data type=<class 'bytes'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - After removing escape rules: type=<class 'bytes'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Unescaped data hex: 8100000a30303030303000000000000100063132333435368b
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Checksum verification: received=139, calculated=139
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message data to parse: 8100000a3030303030300000000000010006313233343536
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message ID: 8100
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Body attributes: 000A
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Phone BCD: 303030303030
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message serial number: 0
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Package info: 0000
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Unpacked header: msg_id=8100, body_attr=10, phone_bcd type=<class 'bytes'>, phone_bcd=303030303030, msg_serial_no=0, pkg_info=0
+
+Simulator: 2025-04-14 12:46:50,849 - jt808-simulator - DEBUG - Received message: 8100, length: 27 bytes
+
+Simulator: 2025-04-14 12:46:50,849 - jt808-simulator - INFO - Registration successful, auth code: 
+
+Simulator: 2025-04-14 12:46:50,849 - jt808-simulator - DEBUG - Sent message: 0102, length: 19 bytes
+
+Simulator: 2025-04-14 12:46:50,947 - jt808-simulator - INFO - Received authentication code: 
+
+Simulator: 2025-04-14 12:46:50,947 - jt808-simulator - INFO - Authenticating terminal...
+
+Simulator: 2025-04-14 12:46:50,948 - jt808-simulator - DEBUG - Sent message: 0102, length: 19 bytes
+
+Simulator: 2025-04-14 12:47:00,957 - jt808-simulator - ERROR - Authentication failed
+
+Simulator: 2025-04-14 12:47:00,957 - jt808-simulator - INFO - Disconnected from server
+
+Simulator: 2025-04-14 12:47:00,957 - jt808-simulator - INFO - Simulator stopped
+
+Simulator: Process exited with code 0
+
+MQTT Converter
+JT808 Server Host:
+0.0.0.0
+JT808 Server Port:
+8008
+MQTT Host:
+localhost
+MQTT Port:
+1883
+MQTT Username:
+MQTT Password:
+MQTT Topic Prefix:
+jt808
+Converter Log
+Converter: Process started automatically by web interface
+
+Converter: 2025-04-14 12:27:36,090 - jt808-converter - INFO - Successfully imported all modules
+
+Converter: 2025-04-14 12:27:36,091 - jt808-converter - INFO - Loaded configuration from config.json
+
+Converter: /home/runner/workspace/converter.py:822: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+
+Converter: mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'jt808_converter'))
+
+Converter: 2025-04-14 12:27:36,092 - jt808-converter - WARNING - Failed to connect to MQTT broker: [Errno 99] Cannot assign requested address
+
+Converter: 2025-04-14 12:27:36,092 - jt808-converter - WARNING - Continuing in simulation mode without MQTT
+
+Converter: 2025-04-14 12:27:36,092 - jt808-converter - INFO - JT808 Server listening on 0.0.0.0:8008
+
+Converter: 2025-04-14 12:46:50,847 - jt808-converter - INFO - New connection from 127.0.0.1:45660
+
+Converter: 2025-04-14 12:46:50,848 - jt808-converter - DEBUG - Raw message data: bytearray(b'~\x01\x00\x00*123456\x00\x01\x00\x00\x00\x0b\x00\x01SIMULSIM808\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00SIM0001\x00\x04DEMO_~')
+
+Converter: 2025-04-14 12:46:50,848 - jt808-converter - DEBUG - Raw message data length: 59 bytes
+
+Converter: 2025-04-14 12:46:50,848 - jt808-converter - DEBUG - Raw message data hex: 7e0100002a31323334353600010000000b000153494d554c53494d383038000000000000000000000000000053494d30303031000444454d4f5f7e
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - INFO - Client ('127.0.0.1', 45660) identified as device 123456
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Received message from 123456: 0100, length: 44 bytes
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - INFO - Registration from 123456
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Generated auth code for 123456: 123456
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Registration response body: 00010006313233343536
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Registration response encoded: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Sent registration response to 123456: result=0, auth_code=123456
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/registration: {'device_id': '123456', 'timestamp': '2025-04-14T12:46:50.849425', 'event': 'registration', 'province_id': 0, 'city_id': 11, 'manufacturer_id': '\x01SIM', 'terminal_model': 'ULSIM808', 'terminal_id': 'SIM00', 'license_plate_color': 48, 'license_plate': ''}
+
+Converter: 2025-04-14 12:46:50,849 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/status: {'device_id': '123456', 'timestamp': '2025-04-14T12:46:50.849477', 'status': 'online'}
+
+Converter: 2025-04-14 12:47:00,965 - jt808-converter - INFO - Connection closed by client ('127.0.0.1', 45660)
+
+Converter: 2025-04-14 12:47:00,965 - jt808-converter - INFO - Closing connection to device 123456
+
+Converter: 2025-04-14 12:47:00,965 - jt808-converter - DEBUG - Simulated MQTT publish to jt808/123456/status: {'device_id': '123456', 'timestamp': '2025-04-14T12:47:00.965966', 'status': 'offline'}
+
+Map View
++
+−
+Leaflet | © OpenStreetMap contributors

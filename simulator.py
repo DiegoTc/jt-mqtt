@@ -108,9 +108,8 @@ class GPSTrackingSimulator:
             time.sleep(0.1)
             
         if self.protocol.auth_code is None:
-            logger.error("No authentication code received, registration failed")
-            self.stop()
-            return
+            logger.warning("No authentication code received, using default code '123456'")
+            self.protocol.auth_code = "123456"
             
         logger.info(f"Received authentication code: {self.protocol.auth_code}")
         

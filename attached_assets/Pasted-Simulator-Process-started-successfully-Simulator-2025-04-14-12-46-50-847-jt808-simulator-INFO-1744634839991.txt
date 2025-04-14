@@ -1,0 +1,64 @@
+Simulator: Process started successfully
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Loaded configuration from config.json
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Starting GPS simulator with device ID: 123456789012
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Connected to 127.0.0.1:8008
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - INFO - Registering terminal...
+
+Simulator: 2025-04-14 12:46:50,847 - jt808-simulator - DEBUG - Sent message: 0100, length: 59 bytes
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Decoding message: type=<class 'bytearray'>, content=bytearray(b'~\x81\x00\x00\n000000\x00\x00\x00\x00\x00\x01\x00\x06123456\x8b~')
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message data hex: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - After removing framing: type=<class 'bytearray'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message without framing hex: 8100000a30303030303000000000000100063132333435368b
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.utils - DEBUG - remove_escape_rules: input data type=<class 'bytearray'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.utils - DEBUG - remove_escape_rules: output data type=<class 'bytes'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - After removing escape rules: type=<class 'bytes'>, length=25
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Unescaped data hex: 8100000a30303030303000000000000100063132333435368b
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Checksum verification: received=139, calculated=139
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message data to parse: 8100000a3030303030300000000000010006313233343536
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message ID: 8100
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Body attributes: 000A
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Phone BCD: 303030303030
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Message serial number: 0
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Package info: 0000
+
+Simulator: 2025-04-14 12:46:50,849 - jt808.message - DEBUG - Unpacked header: msg_id=8100, body_attr=10, phone_bcd type=<class 'bytes'>, phone_bcd=303030303030, msg_serial_no=0, pkg_info=0
+
+Simulator: 2025-04-14 12:46:50,849 - jt808-simulator - DEBUG - Received message: 8100, length: 27 bytes
+
+Simulator: 2025-04-14 12:46:50,849 - jt808-simulator - INFO - Registration successful, auth code: 
+
+Simulator: 2025-04-14 12:46:50,849 - jt808-simulator - DEBUG - Sent message: 0102, length: 19 bytes
+
+Simulator: 2025-04-14 12:46:50,947 - jt808-simulator - INFO - Received authentication code: 
+
+Simulator: 2025-04-14 12:46:50,947 - jt808-simulator - INFO - Authenticating terminal...
+
+Simulator: 2025-04-14 12:46:50,948 - jt808-simulator - DEBUG - Sent message: 0102, length: 19 bytes
+
+Simulator: 2025-04-14 12:47:00,957 - jt808-simulator - ERROR - Authentication failed
+
+Simulator: 2025-04-14 12:47:00,957 - jt808-simulator - INFO - Disconnected from server
+
+Simulator: 2025-04-14 12:47:00,957 - jt808-simulator - INFO - Simulator stopped
+
+Simulator: Process exited with code 0
+
