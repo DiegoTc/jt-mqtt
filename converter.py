@@ -339,9 +339,25 @@ class JT808Server:
         try:
             # Parse registration message body
             province_id, city_id = struct.unpack('>HH', message.body[:4])
-            manufacturer_id = message.body[4:9].decode('ascii').strip('\x00')
-            terminal_model = message.body[9:29].decode('ascii').strip('\x00')
-            terminal_id = message.body[29:36].decode('ascii').strip('\x00')
+            
+            # Handle manufacturer_id - safely decode ASCII
+            try:
+                manufacturer_id = message.body[4:9].decode('ascii').strip('\x00')
+            except Exception:
+                manufacturer_id = ''.join([f'{b:02x}' for b in message.body[4:9]]).upper()
+            
+            # Handle terminal_model - safely decode ASCII
+            try:
+                terminal_model = message.body[9:29].decode('ascii').strip('\x00')
+            except Exception:
+                terminal_model = ''.join([f'{b:02x}' for b in message.body[9:29]]).upper()
+            
+            # Handle terminal_id - safely decode ASCII
+            try:
+                terminal_id = message.body[29:36].decode('ascii').strip('\x00')
+            except Exception:
+                terminal_id = ''.join([f'{b:02x}' for b in message.body[29:36]]).upper()
+                
             license_plate_color = message.body[36]
             
             # Get license plate
@@ -349,7 +365,10 @@ class JT808Server:
             if len(message.body) > 37:
                 license_len = message.body[37]
                 if 38 + license_len <= len(message.body):
-                    license_plate = message.body[38:38+license_len].decode('utf-8')
+                    try:
+                        license_plate = message.body[38:38+license_len].decode('utf-8')
+                    except Exception:
+                        license_plate = ''.join([f'{b:02x}' for b in message.body[38:38+license_len]]).upper()
             
             topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/registration"
             payload = {
@@ -387,7 +406,10 @@ class JT808Server:
             auth_len = message.body[0]
             auth_code = ""
             if 1 + auth_len <= len(message.body):
-                auth_code = message.body[1:1+auth_len].decode('utf-8')
+                try:
+                    auth_code = message.body[1:1+auth_len].decode('utf-8')
+                except Exception:
+                    auth_code = ''.join([f'{b:02x}' for b in message.body[1:1+auth_len]]).upper()
             
             topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/authentication"
             payload = {
