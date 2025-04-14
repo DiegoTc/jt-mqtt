@@ -54,10 +54,33 @@ class Message:
         """
         # Prepare the phone number (device ID)
         # Ensure we only use the last 12 digits (6 bytes) if phone_no is longer
-        phone_str = str(self.phone_no)
-        if len(phone_str) > 12:
-            phone_str = phone_str[-12:]  # Take the last 12 digits
-        phone_bytes = bytes(f'{phone_str:012d}', 'ascii')
+        try:
+            # Make sure phone_no is a string first
+            phone_str = str(self.phone_no)
+            # Try to clean it up in case it's not a pure numeric string
+            if not phone_str.isdigit():
+                # If it contains non-digit chars, try to extract digits only
+                import re
+                digits_only = re.sub(r'\D', '', phone_str)
+                if digits_only:
+                    phone_str = digits_only
+                else:
+                    # If we can't get digits, generate a fallback ID
+                    import random
+                    phone_str = f"{random.randint(100000000000, 999999999999)}"
+                    
+            if len(phone_str) > 12:
+                phone_str = phone_str[-12:]  # Take the last 12 digits
+            elif len(phone_str) < 12:
+                # Pad with zeros if necessary
+                phone_str = phone_str.zfill(12)
+                
+            phone_bytes = bytes(f'{phone_str}', 'ascii')
+        except Exception as e:
+            import logging
+            logging.error(f"Error preparing phone number: {e}, phone_no={self.phone_no}, type={type(self.phone_no)}")
+            # Fallback to a default phone number
+            phone_bytes = b'000000000000'
         
         # Prepare message header
         msg_header = struct.pack('>HH6sHH',
