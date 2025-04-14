@@ -797,25 +797,35 @@ def main():
         config['mqtt_topic_prefix'] = args.mqtt_topic
         
     # Initialize MQTT client
-    mqtt_client = mqtt.Client(client_id=config['mqtt_client_id'])
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_disconnect = on_disconnect
-    mqtt_client.on_publish = on_publish
-    
-    if config['mqtt_user'] and config['mqtt_password']:
-        mqtt_client.username_pw_set(config['mqtt_user'], config['mqtt_password'])
-        
-    # Connect to MQTT broker
     try:
-        mqtt_client.connect(config['mqtt_host'], config['mqtt_port'])
-        mqtt_client.loop_start()
+        mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'jt808_converter'))
+        mqtt_client.on_connect = on_connect
+        mqtt_client.on_disconnect = on_disconnect
+        mqtt_client.on_publish = on_publish
+        
+        if config.get('mqtt_user') and config.get('mqtt_password'):
+            mqtt_client.username_pw_set(config['mqtt_user'], config['mqtt_password'])
+            
+        # Connect to MQTT broker
+        try:
+            mqtt_client.connect(config['mqtt_host'], config['mqtt_port'])
+            mqtt_client.loop_start()
+            logger.info(f"Connected to MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
+            mqtt_connected = True
+        except Exception as e:
+            logger.warning(f"Failed to connect to MQTT broker: {e}")
+            logger.warning("Continuing in simulation mode without MQTT")
+            mqtt_connected = False
     except Exception as e:
-        logger.error(f"Failed to connect to MQTT broker: {e}")
-        return
+        logger.warning(f"Failed to initialize MQTT client: {e}")
+        logger.warning("Continuing in simulation mode without MQTT")
+        mqtt_client = None
+        mqtt_connected = False
         
     # MQTT configuration for the JT808 server
     mqtt_config = {
-        'topic_prefix': config['mqtt_topic_prefix']
+        'topic_prefix': config.get('mqtt_topic_prefix', 'jt808'),
+        'mqtt_connected': mqtt_connected
     }
     
     # Create and start the JT808 server
