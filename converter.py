@@ -211,6 +211,11 @@ class JT808Server:
             buffer = buffer[end_idx+1:]
             self.clients[client_socket]['buffer'] = buffer
             
+            # Debug log the message data in detail
+            logger.debug(f"Raw message data: {message_data}")
+            logger.debug(f"Raw message data length: {len(message_data)} bytes")
+            logger.debug(f"Raw message data hex: {message_data.hex()}")
+            
             try:
                 # Decode the message
                 message = Message.decode(message_data)
@@ -227,7 +232,9 @@ class JT808Server:
                 # Process the message
                 self._process_message(client_socket, message)
             except Exception as e:
+                import traceback
                 logger.error(f"Failed to decode message: {e}")
+                logger.error(traceback.format_exc())
                 
     def _process_message(self, client_socket, message):
         """

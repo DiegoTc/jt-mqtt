@@ -1,0 +1,86 @@
+Simulator: Process started successfully
+
+Simulator: 2025-04-14 03:34:56,977 - jt808-simulator - INFO - Loaded configuration from config.json
+
+Simulator: 2025-04-14 03:34:56,978 - jt808-simulator - INFO - Starting GPS simulator with device ID: 123456789012
+
+Simulator: 2025-04-14 03:34:56,978 - jt808-simulator - INFO - Connected to 127.0.0.1:8008
+
+Simulator: 2025-04-14 03:34:56,978 - jt808-simulator - INFO - Registering terminal...
+
+Simulator: 2025-04-14 03:34:56,978 - jt808-simulator - DEBUG - Sent message: 0100, length: 59 bytes
+
+Simulator: 2025-04-14 03:35:27,010 - jt808-simulator - ERROR - No authentication code received, registration failed
+
+Simulator: 2025-04-14 03:35:27,010 - jt808-simulator - INFO - Disconnected from server
+
+Simulator: 2025-04-14 03:35:27,010 - jt808-simulator - INFO - Simulator stopped
+
+Simulator: Process exited with code 0
+
+MQTT Converter
+JT808 Server Host:
+0.0.0.0
+JT808 Server Port:
+8008
+MQTT Host:
+localhost
+MQTT Port:
+1883
+MQTT Username:
+MQTT Password:
+MQTT Topic Prefix:
+jt808
+Converter Log
+Converter: Starting JT808 to MQTT converter server...
+
+Converter: Process started successfully
+
+Converter: You can now start the simulator
+
+Converter: 2025-04-14 03:34:49,659 - jt808-converter - INFO - Successfully imported all modules
+
+Converter: 2025-04-14 03:34:49,660 - jt808-converter - INFO - Loaded configuration from config.json
+
+Converter: /home/runner/workspace/converter.py:810: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+
+Converter: mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'jt808_converter'))
+
+Converter: 2025-04-14 03:34:49,660 - jt808-converter - WARNING - Failed to connect to MQTT broker: [Errno 99] Cannot assign requested address
+
+Converter: 2025-04-14 03:34:49,661 - jt808-converter - WARNING - Continuing in simulation mode without MQTT
+
+Converter: 2025-04-14 03:34:49,662 - jt808-converter - INFO - JT808 Server listening on 0.0.0.0:8008
+
+Converter: 2025-04-14 03:34:56,978 - jt808-converter - INFO - New connection from 127.0.0.1:47254
+
+Converter ERROR: 2025-04-14 03:34:56,979 - jt808.message - ERROR - Error unpacking header: unpack requires a buffer of 14 bytes
+
+Converter: Traceback (most recent call last):
+
+Converter: File "/home/runner/workspace/jt808/message.py", line 176, in decode
+
+Converter: msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
+
+Converter: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Converter ERROR: struct.error: unpack requires a buffer of 14 bytes
+
+Converter: 2025-04-14 03:34:56,979 - jt808.message - ERROR - Message decode failed: unpack requires a buffer of 14 bytes
+
+Converter: Traceback (most recent call last):
+
+Converter: File "/home/runner/workspace/jt808/message.py", line 176, in decode
+
+Converter: msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
+
+Converter: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Converter ERROR: struct.error: unpack requires a buffer of 14 bytes
+
+Converter: 2025-04-14 03:34:56,979 - jt808-converter - ERROR - Failed to decode message: unpack requires a buffer of 14 bytes
+
+Converter: 2025-04-14 03:35:27,016 - jt808-converter - INFO - Connection closed by client ('127.0.0.1', 47254)
+
+Converter: 2025-04-14 03:35:27,016 - jt808-converter - INFO - Closing connection to unidentified client ('127.0.0.1', 47254)
+

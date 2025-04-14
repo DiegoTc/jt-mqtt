@@ -170,13 +170,38 @@ class Message:
             # Basic header fields (without subpackage)
             min_header_len = 12
             if len(msg_data) < min_header_len:
-                raise ValueError(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}")
+                # Try to recover by padding with zeros
+                logger.warning(f"Message data too short: {len(msg_data)} bytes, minimum {min_header_len}, padding with zeros")
+                msg_data = msg_data + b'\x00' * (min_header_len - len(msg_data))
                 
             try:
-                msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
-                logger.debug(f"Unpacked header: msg_id={msg_id:04X}, body_attr={body_attr}, "
-                          f"phone_bcd type={type(phone_bcd)}, phone_bcd={phone_bcd}, "
-                          f"msg_serial_no={msg_serial_no}, pkg_info={pkg_info}")
+                # Get message ID first (first 2 bytes)
+                if len(msg_data) >= 2:
+                    msg_id = struct.unpack('>H', msg_data[:2])[0]
+                    logger.debug(f"Message ID: {msg_id:04X}")
+                else:
+                    logger.error(f"Message data extremely short: {len(msg_data)} bytes")
+                    raise ValueError("Message data too short to extract message ID")
+                
+                # Try to unpack the rest of the header
+                try:
+                    # Unpack the full header if we have enough data
+                    if len(msg_data) >= min_header_len:
+                        msg_id, body_attr, phone_bcd, msg_serial_no, pkg_info = struct.unpack('>HH6sHH', msg_data[:min_header_len])
+                    else:
+                        # Default values for missing fields
+                        body_attr = 0
+                        phone_bcd = b'000000'
+                        msg_serial_no = 0
+                        pkg_info = 0
+                        logger.warning("Using default values for missing header fields")
+                        
+                    logger.debug(f"Unpacked header: msg_id={msg_id:04X}, body_attr={body_attr}, "
+                              f"phone_bcd type={type(phone_bcd)}, phone_bcd={phone_bcd}, "
+                              f"msg_serial_no={msg_serial_no}, pkg_info={pkg_info}")
+                except Exception as e:
+                    logger.error(f"Error unpacking full header: {e}\n{traceback.format_exc()}")
+                    raise
             except Exception as e:
                 logger.error(f"Error unpacking header: {e}\n{traceback.format_exc()}")
                 raise
