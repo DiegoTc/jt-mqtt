@@ -1,0 +1,199 @@
+Simulator: 2025-04-16 11:10:01,872 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-16 11:10:01,872 - jt808-simulator - DEBUG - Sent message: 0002, length: 17 bytes
+
+Simulator: 2025-04-16 11:10:02,032 - jt808-simulator - INFO - Sending location: 15.507112928471889, -88.02305168266757
+
+Simulator: 2025-04-16 11:10:02,032 - jt808-simulator - DEBUG - Sending location: lat=15.507112928471889, lon=-88.02305168266757, alt=100, speed=51, dir=10, alarm=0, status=3
+
+Simulator: 2025-04-16 11:10:02,032 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:10:12,063 - jt808-simulator - INFO - Sending location: 15.507162106033856, -88.02304265120043
+
+Simulator: 2025-04-16 11:10:12,064 - jt808-simulator - DEBUG - Sending location: lat=15.507162106033856, lon=-88.02304265120043, alt=100, speed=66, dir=20, alarm=0, status=3
+
+Simulator: 2025-04-16 11:10:12,064 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:10:22,097 - jt808-simulator - INFO - Sending location: 15.507208977942948, -88.02302524361191
+
+Simulator: 2025-04-16 11:10:22,097 - jt808-simulator - DEBUG - Sending location: lat=15.507208977942948, lon=-88.02302524361191, alt=100, speed=66, dir=11, alarm=0, status=3
+
+Simulator: 2025-04-16 11:10:22,097 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:10:32,163 - jt808-simulator - INFO - Sending location: 15.507257937370753, -88.02301509598021
+
+Simulator: 2025-04-16 11:10:32,163 - jt808-simulator - DEBUG - Sending location: lat=15.507257937370753, lon=-88.02301509598021, alt=100, speed=63, dir=3, alarm=0, status=3
+
+Simulator: 2025-04-16 11:10:32,163 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:10:42,188 - jt808-simulator - INFO - Sending location: 15.50730782608874, -88.02301176194098
+
+Simulator: 2025-04-16 11:10:42,188 - jt808-simulator - DEBUG - Sending location: lat=15.50730782608874, lon=-88.02301176194098, alt=100, speed=54, dir=8, alarm=0, status=3
+
+Simulator: 2025-04-16 11:10:42,188 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:10:52,224 - jt808-simulator - INFO - Sending location: 15.50735726538845, -88.02300429497076
+
+Simulator: 2025-04-16 11:10:52,224 - jt808-simulator - DEBUG - Sending location: lat=15.50735726538845, lon=-88.02300429497076, alt=100, speed=59, dir=1, alarm=0, status=3
+
+Simulator: 2025-04-16 11:10:52,224 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:11:02,055 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-16 11:11:02,055 - jt808-simulator - DEBUG - Sent message: 0002, length: 17 bytes
+
+Simulator: 2025-04-16 11:11:02,265 - jt808-simulator - INFO - Sending location: 15.507407248833854, -88.02300300843062
+
+Simulator: 2025-04-16 11:11:02,265 - jt808-simulator - DEBUG - Sending location: lat=15.507407248833854, lon=-88.02300300843062, alt=100, speed=69, dir=8, alarm=0, status=3
+
+Simulator: 2025-04-16 11:11:02,265 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:11:12,291 - jt808-simulator - INFO - Sending location: 15.507456663316903, -88.02299537895718
+
+Simulator: 2025-04-16 11:11:12,292 - jt808-simulator - DEBUG - Sending location: lat=15.507456663316903, lon=-88.02299537895718, alt=100, speed=67, dir=16, alarm=0, status=3
+
+Simulator: 2025-04-16 11:11:12,292 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:11:22,327 - jt808-simulator - INFO - Sending location: 15.507504634616316, -88.0229812809278
+
+Simulator: 2025-04-16 11:11:22,327 - jt808-simulator - DEBUG - Sending location: lat=15.507504634616316, lon=-88.0229812809278, alt=100, speed=55, dir=20, alarm=0, status=3
+
+Simulator: 2025-04-16 11:11:22,328 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:11:32,349 - jt808-simulator - INFO - Sending location: 15.507551334536537, -88.022963417069
+
+Simulator: 2025-04-16 11:11:32,349 - jt808-simulator - DEBUG - Sending location: lat=15.507551334536537, lon=-88.022963417069, alt=100, speed=54, dir=30, alarm=0, status=3
+
+Simulator: 2025-04-16 11:11:32,350 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:11:42,391 - jt808-simulator - INFO - Sending location: 15.507594542674765, -88.02293825644915
+
+Simulator: 2025-04-16 11:11:42,391 - jt808-simulator - DEBUG - Sending location: lat=15.507594542674765, lon=-88.02293825644915, alt=100, speed=55, dir=32, alarm=0, status=3
+
+Simulator: 2025-04-16 11:11:42,391 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:11:52,409 - jt808-simulator - INFO - Sending location: 15.507636568145772, -88.0229111666026
+
+Simulator: 2025-04-16 11:11:52,410 - jt808-simulator - DEBUG - Sending location: lat=15.507636568145772, lon=-88.0229111666026, alt=100, speed=69, dir=37, alarm=0, status=3
+
+Simulator: 2025-04-16 11:11:52,410 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:12:02,209 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-16 11:12:02,210 - jt808-simulator - DEBUG - Sent message: 0002, length: 17 bytes
+
+Simulator: 2025-04-16 11:12:02,442 - jt808-simulator - INFO - Sending location: 15.507676366281643, -88.02288089932024
+
+Simulator: 2025-04-16 11:12:02,442 - jt808-simulator - DEBUG - Sending location: lat=15.507676366281643, lon=-88.02288089932024, alt=100, speed=53, dir=36, alarm=0, status=3
+
+Simulator: 2025-04-16 11:12:02,442 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:12:12,481 - jt808-simulator - INFO - Sending location: 15.507716655285952, -88.02285128857672
+
+Simulator: 2025-04-16 11:12:12,481 - jt808-simulator - DEBUG - Sending location: lat=15.507716655285952, lon=-88.02285128857672, alt=100, speed=56, dir=32, alarm=0, status=3
+
+Simulator: 2025-04-16 11:12:12,482 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:12:22,510 - jt808-simulator - INFO - Sending location: 15.507758680119094, -88.02282419774065
+
+Simulator: 2025-04-16 11:12:22,511 - jt808-simulator - DEBUG - Sending location: lat=15.507758680119094, lon=-88.02282419774065, alt=100, speed=68, dir=24, alarm=0, status=3
+
+Simulator: 2025-04-16 11:12:22,511 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:12:32,536 - jt808-simulator - INFO - Sending location: 15.50780415570187, -88.02280341381967
+
+Simulator: 2025-04-16 11:12:32,536 - jt808-simulator - DEBUG - Sending location: lat=15.50780415570187, lon=-88.02280341381967, alt=100, speed=58, dir=27, alarm=0, status=3
+
+Simulator: 2025-04-16 11:12:32,537 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:12:42,571 - jt808-simulator - INFO - Sending location: 15.507848356324123, -88.02278004065145
+
+Simulator: 2025-04-16 11:12:42,571 - jt808-simulator - DEBUG - Sending location: lat=15.507848356324123, lon=-88.02278004065145, alt=100, speed=51, dir=37, alarm=0, status=3
+
+Simulator: 2025-04-16 11:12:42,572 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:12:52,596 - jt808-simulator - INFO - Sending location: 15.507888122931956, -88.02274973195796
+
+Simulator: 2025-04-16 11:12:52,596 - jt808-simulator - DEBUG - Sending location: lat=15.507888122931956, lon=-88.02274973195796, alt=100, speed=65, dir=37, alarm=0, status=3
+
+Simulator: 2025-04-16 11:12:52,596 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:13:02,348 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-16 11:13:02,349 - jt808-simulator - DEBUG - Sent message: 0002, length: 17 bytes
+
+Simulator: 2025-04-16 11:13:02,635 - jt808-simulator - INFO - Sending location: 15.50792787132155, -88.02271939937606
+
+Simulator: 2025-04-16 11:13:02,636 - jt808-simulator - DEBUG - Sending location: lat=15.50792787132155, lon=-88.02271939937606, alt=100, speed=60, dir=35, alarm=0, status=3
+
+Simulator: 2025-04-16 11:13:02,636 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:13:12,658 - jt808-simulator - INFO - Sending location: 15.507968807928638, -88.02269069059342
+
+Simulator: 2025-04-16 11:13:12,658 - jt808-simulator - DEBUG - Sending location: lat=15.507968807928638, lon=-88.02269069059342, alt=100, speed=56, dir=25, alarm=0, status=3
+
+Simulator: 2025-04-16 11:13:12,658 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:13:22,677 - jt808-simulator - INFO - Sending location: 15.508013874279241, -88.02266903363049
+
+Simulator: 2025-04-16 11:13:22,677 - jt808-simulator - DEBUG - Sending location: lat=15.508013874279241, lon=-88.02266903363049, alt=100, speed=59, dir=16, alarm=0, status=3
+
+Simulator: 2025-04-16 11:13:22,678 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:13:32,710 - jt808-simulator - INFO - Sending location: 15.508061746399667, -88.02265460241135
+
+Simulator: 2025-04-16 11:13:32,710 - jt808-simulator - DEBUG - Sending location: lat=15.508061746399667, lon=-88.02265460241135, alt=100, speed=51, dir=15, alarm=0, status=3
+
+Simulator: 2025-04-16 11:13:32,711 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:13:42,733 - jt808-simulator - INFO - Sending location: 15.508109823961306, -88.02264087113075
+
+Simulator: 2025-04-16 11:13:42,733 - jt808-simulator - DEBUG - Sending location: lat=15.508109823961306, lon=-88.02264087113075, alt=100, speed=57, dir=12, alarm=0, status=3
+
+Simulator: 2025-04-16 11:13:42,734 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:13:52,762 - jt808-simulator - INFO - Sending location: 15.508158710283363, -88.02263037696495
+
+Simulator: 2025-04-16 11:13:52,762 - jt808-simulator - DEBUG - Sending location: lat=15.508158710283363, lon=-88.02263037696495, alt=100, speed=57, dir=3, alarm=0, status=3
+
+Simulator: 2025-04-16 11:13:52,762 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:14:02,506 - jt808-simulator - INFO - Sending heartbeat...
+
+Simulator: 2025-04-16 11:14:02,506 - jt808-simulator - DEBUG - Sent message: 0002, length: 18 bytes
+
+Simulator: 2025-04-16 11:14:02,793 - jt808-simulator - INFO - Sending location: 15.508208589526241, -88.02262690405121
+
+Simulator: 2025-04-16 11:14:02,793 - jt808-simulator - DEBUG - Sending location: lat=15.508208589526241, lon=-88.02262690405121, alt=100, speed=63, dir=3, alarm=0, status=3
+
+Simulator: 2025-04-16 11:14:02,794 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:14:12,824 - jt808-simulator - INFO - Sending location: 15.508258495196502, -88.02262383418545
+
+Simulator: 2025-04-16 11:14:12,824 - jt808-simulator - DEBUG - Sending location: lat=15.508258495196502, lon=-88.02262383418545, alt=100, speed=69, dir=9, alarm=0, status=3
+
+Simulator: 2025-04-16 11:14:12,824 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:14:22,862 - jt808-simulator - INFO - Sending location: 15.508307776145486, -88.02261538503951
+
+Simulator: 2025-04-16 11:14:22,862 - jt808-simulator - DEBUG - Sending location: lat=15.508307776145486, lon=-88.02261538503951, alt=100, speed=62, dir=18, alarm=0, status=3
+
+Simulator: 2025-04-16 11:14:22,862 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:14:32,889 - jt808-simulator - INFO - Sending location: 15.508355068242153, -88.02259915366271
+
+Simulator: 2025-04-16 11:14:32,890 - jt808-simulator - DEBUG - Sending location: lat=15.508355068242153, lon=-88.02259915366271, alt=100, speed=62, dir=23, alarm=0, status=3
+
+Simulator: 2025-04-16 11:14:32,890 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:14:42,922 - jt808-simulator - INFO - Sending location: 15.508400774355197, -88.02257888173062
+
+Simulator: 2025-04-16 11:14:42,922 - jt808-simulator - DEBUG - Sending location: lat=15.508400774355197, lon=-88.02257888173062, alt=100, speed=53, dir=25, alarm=0, status=3
+
+Simulator: 2025-04-16 11:14:42,923 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
+
+Simulator: 2025-04-16 11:14:52,948 - jt808-simulator - INFO - Sending location: 15.50844600593246, -88.02255757200471
+
+Simulator: 2025-04-16 11:14:52,948 - jt808-simulator - DEBUG - Sending location: lat=15.50844600593246, lon=-88.02255757200471, alt=100, speed=62, dir=26, alarm=0, status=3
+
+Simulator: 2025-04-16 11:14:52,949 - jt808-simulator - DEBUG - Sent message: 0200, length: 54 bytes
