@@ -1,0 +1,27 @@
+python3 mqtt_test.py                                    
+/Users/diegoturcios/Documents/Personal/PetProject/jt-mqtt/mqtt_test.py:24: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  sub_client = mqtt.Client(client_id=sub_client_id, clean_session=True)
+/Users/diegoturcios/Documents/Personal/PetProject/jt-mqtt/mqtt_test.py:26: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+  pub_client = mqtt.Client(client_id=pub_client_id, clean_session=True)
+2025-04-16 15:17:41,425 - mqtt-test - INFO - Connecting subscriber to MQTT broker at broker.hivemq.com:1883...
+2025-04-16 15:17:41,671 - mqtt-test - INFO - Connecting publisher to MQTT broker at broker.hivemq.com:1883...
+2025-04-16 15:17:41,804 - mqtt-test - INFO - Connected to MQTT broker with result code 0, client_id: mqtt-test-sub-1fe09aa3
+2025-04-16 15:17:41,805 - mqtt-test - INFO - Subscribed to topic: test/pettracker/mqtt_test with QoS 1
+2025-04-16 15:17:41,805 - mqtt-test - INFO - Also subscribed to wildcard topic: pettracker/#
+2025-04-16 15:17:41,805 - mqtt-test - INFO - Also subscribed to wildcard topic: +/#
+2025-04-16 15:17:41,806 - mqtt-test - INFO - Also subscribed to wildcard topic: #
+2025-04-16 15:17:41,949 - mqtt-test - INFO - Subscription confirmed. Message ID: 1, Granted QoS: (1,)
+2025-04-16 15:17:41,959 - mqtt-test - INFO - Connected to MQTT broker with result code 0, client_id: mqtt-test-pub-0e098136
+2025-04-16 15:17:42,093 - mqtt-test - INFO - Subscription confirmed. Message ID: 2, Granted QoS: (1,)
+2025-04-16 15:17:42,093 - mqtt-test - INFO - Subscription confirmed. Message ID: 3, Granted QoS: (128,)
+2025-04-16 15:17:42,093 - mqtt-test - INFO - Subscription confirmed. Message ID: 4, Granted QoS: (128,)
+2025-04-16 15:17:44,837 - mqtt-test - INFO - Publishing message to test/pettracker/mqtt_test: {'timestamp': 1744838264.8378172, 'message': 'Hello from MQTT test', 'client_id': 'mqtt-test-pub-0e098136'}
+2025-04-16 15:17:44,838 - mqtt-test - INFO - Message published successfully
+2025-04-16 15:17:44,988 - mqtt-test - INFO - Message published with ID: 1
+2025-04-16 15:17:44,988 - mqtt-test - INFO - Message received on topic test/pettracker/mqtt_test with QoS 1
+2025-04-16 15:17:44,988 - mqtt-test - INFO - Raw payload: {"timestamp": 1744838264.8378172, "message": "Hello from MQTT test", "client_id": "mqtt-test-pub-0e098136"}
+2025-04-16 15:17:44,989 - mqtt-test - INFO - Parsed JSON: {'timestamp': 1744838264.8378172, 'message': 'Hello from MQTT test', 'client_id': 'mqtt-test-pub-0e098136'}
+2025-04-16 15:17:45,342 - mqtt-test - INFO - Waiting for message... (0s elapsed)
+2025-04-16 15:17:45,343 - mqtt-test - INFO - Test successful: Message was published and received
+2025-04-16 15:17:46,997 - mqtt-test - INFO - Disconnected from broker
+2025-04-16 15:17:46,998 - mqtt-test - INFO - Disconnected from broker

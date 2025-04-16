@@ -1,0 +1,51 @@
+Converter: Process started automatically by web interface
+
+Converter: 2025-04-16 15:08:04,369 - jt808-converter - INFO - Successfully imported all modules
+
+Converter: 2025-04-16 15:08:04,370 - jt808-converter - INFO - Loaded configuration from config.json
+
+Converter: 2025-04-16 15:08:04,370 - jt808-converter - INFO - Using local MQTT broker configuration
+
+Converter: 2025-04-16 15:08:04,370 - jt808-converter - INFO - Using MQTT broker: broker.hivemq.com:1883
+
+Converter: 2025-04-16 15:08:04,370 - jt808-converter - INFO - Setting up local MQTT client
+
+Converter: /Users/diegoturcios/Documents/Personal/PetProject/jt-mqtt/converter.py:994: DeprecationWarning: Callback API version 1 is deprecated, update to latest version
+
+Converter: mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'pettracker_converter'))
+
+Converter: 2025-04-16 15:08:04,672 - jt808-converter - INFO - Connected to local MQTT broker at broker.hivemq.com:1883
+
+Converter: 2025-04-16 15:08:04,672 - jt808-converter - INFO - JT808 Server listening on 0.0.0.0:8008
+
+Converter: 2025-04-16 15:08:04,805 - jt808-converter - INFO - Connected to MQTT broker successfully
+
+Converter: 2025-04-16 15:08:04,805 - jt808-converter - INFO - Published test message to MQTT broker
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - INFO - New connection from 127.0.0.1:50278
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Raw message data: bytearray(b'~\x01\x00\x00*500296\x00\x01\x00\x00\x00\x0b\x00\x01SIMULSIM808\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00SIM0001\x00\x04DEMOP~')
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Raw message data length: 59 bytes
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Raw message data hex: 7e0100002a35303032393600010000000b000153494d554c53494d383038000000000000000000000000000053494d30303031000444454d4f507e
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - INFO - Client ('127.0.0.1', 50278) identified as device 500296
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Received message from 500296: 0100, length: 44 bytes
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - INFO - Registration from 500296
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Generated auth code for 500296: 123456
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Auth code: '123456', bytes representation: 313233343536, length: 6
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Registration response body: 00010006313233343536
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Registration response encoded: 7e8100000a30303030303000000000000100063132333435368b7e
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - INFO - Sent registration response to 500296: result=0, auth_code='123456'
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Publishing to MQTT: pettracker/500296/registration - {"device_id": "500296", "timestamp": "2025-04-16T15:08:24.194815", "event": "registration", "provinc...
+
+Converter: 2025-04-16 15:08:24,194 - jt808-converter - DEBUG - Publishing to MQTT: pettracker/500296/status - {"device_id": "500296", "timestamp": "2025-04-16T15:08:24.194902", "status": "online"}...

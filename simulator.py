@@ -46,6 +46,14 @@ class GPSTrackingSimulator:
         self.running = False
         self.location_thread = None
         self.heartbeat_thread = None
+        self.connection_thread = None
+        self.monitor_thread = None
+        
+        # Connection management
+        self.connection_check_interval = config.get('connection_check_interval', 5)  # Seconds
+        self.reconnect_interval = config.get('reconnect_interval', 5)  # Initial reconnect delay
+        self.max_reconnect_interval = config.get('max_reconnect_interval', 60)  # Max reconnect delay
+        self.threads_started = False
         
         # Current location - ensure all values are properly typed
         self.latitude = float(config.get('start_latitude', 15.5042))  # Honduras as default
@@ -78,60 +86,125 @@ class GPSTrackingSimulator:
         self.batch_locations = []
         
     def start(self):
-        """Start the simulator"""
+        """Start the simulator with reconnection capability"""
         if self.running:
             logger.info("Simulator is already running")
             return
             
         logger.info(f"Starting GPS simulator with device ID: {self.device_id}")
-        
-        # Connect to the server
-        if not self.protocol.connect():
-            logger.error("Failed to connect to the server")
-            return
-            
         self.running = True
         
-        # Register the terminal
-        logger.info("Registering terminal...")
-        if not self.protocol.register(
-            self.province_id, self.city_id, self.manufacturer_id, 
-            self.terminal_model, self.terminal_id, 0, self.license_plate
-        ):
-            logger.error("Failed to send registration message")
-            self.stop()
-            return
-            
-        # Wait for authentication code (registration response)
-        timeout = time.time() + 30  # 30 seconds timeout
-        while self.protocol.auth_code is None and time.time() < timeout:
-            time.sleep(0.1)
-            
-        if self.protocol.auth_code is None:
-            logger.warning("No authentication code received, using default code '123456'")
-            self.protocol.auth_code = "123456"
-            
-        logger.info(f"Received authentication code: {self.protocol.auth_code}")
+        # Start connection management thread
+        self.connection_thread = threading.Thread(target=self._connection_manager)
+        self.connection_thread.daemon = True
+        self.connection_thread.start()
         
-        # Authenticate (though this is already done in the protocol handler)
-        if not self.protocol.authenticated:
-            logger.info("Authenticating terminal...")
-            if not self.protocol.authenticate(self.protocol.auth_code):
-                logger.error("Failed to send authentication message")
-                self.stop()
-                return
+        # Start monitor thread for server messages
+        self.monitor_thread = threading.Thread(target=self._message_monitor)
+        self.monitor_thread.daemon = True
+        self.monitor_thread.start()
+        
+    def _connection_manager(self):
+        """Manage connection with reconnection logic"""
+        backoff_time = self.reconnect_interval
+        
+        while self.running:
+            try:
+                # Check if we need to reconnect
+                if not self.protocol.connected:
+                    logger.info(f"Connecting to server at {self.server_ip}:{self.server_port}...")
+                    
+                    # Attempt connection
+                    if self.protocol.connect():
+                        logger.info("Connected to server")
+                        backoff_time = self.reconnect_interval  # Reset backoff time on success
+                        
+                        # Run registration/authentication sequence
+                        if self._register_and_authenticate():
+                            # Start data transmission threads if they're not running
+                            if not self.threads_started:
+                                self._start_data_threads()
+                                self.threads_started = True
+                    else:
+                        # Connection failed, wait and retry
+                        logger.warning(f"Connection failed, retrying in {backoff_time} seconds...")
+                        time.sleep(backoff_time)
+                        # Exponential backoff with max cap
+                        backoff_time = min(backoff_time * 2, self.max_reconnect_interval)
+                        continue
                 
-            # Wait for authentication
-            timeout = time.time() + 10  # 10 seconds timeout
-            while not self.protocol.authenticated and time.time() < timeout:
+                # Check connection health periodically
+                time.sleep(self.connection_check_interval)
+                
+                # If we detect a disconnection in the protocol layer, log it 
+                if not self.protocol.connected and self.threads_started:
+                    logger.warning("Connection lost, will attempt to reconnect...")
+                    # Reset authentication state
+                    self.protocol.authenticated = False
+                    self.protocol.auth_code = None
+                    
+            except Exception as e:
+                logger.error(f"Error in connection manager: {e}")
+                time.sleep(self.reconnect_interval)
+    
+    def _register_and_authenticate(self):
+        """Handle registration and authentication process"""
+        try:
+            # Register the terminal
+            logger.info("Registering terminal...")
+            if not self.protocol.register(
+                self.province_id, self.city_id, self.manufacturer_id, 
+                self.terminal_model, self.terminal_id, 0, self.license_plate
+            ):
+                logger.error("Failed to send registration message")
+                return False
+                
+            # Wait for authentication code (registration response)
+            timeout = time.time() + 30  # 30 seconds timeout
+            while self.protocol.auth_code is None and time.time() < timeout and self.protocol.connected:
                 time.sleep(0.1)
                 
+            if not self.protocol.connected:
+                logger.error("Connection lost during registration")
+                return False
+                
+            if self.protocol.auth_code is None:
+                logger.warning("No authentication code received, using default code '123456'")
+                self.protocol.auth_code = "123456"
+                
+            logger.info(f"Received authentication code: {self.protocol.auth_code}")
+            
+            # Authenticate
             if not self.protocol.authenticated:
-                logger.warning("Authentication response not received, proceeding anyway for testing purposes")
-                # Force authentication status for testing purposes
-                self.protocol.authenticated = True
-        
-        logger.info("Authentication successful")
+                logger.info("Authenticating terminal...")
+                if not self.protocol.authenticate(self.protocol.auth_code):
+                    logger.error("Failed to send authentication message")
+                    return False
+                    
+                # Wait for authentication
+                timeout = time.time() + 10  # 10 seconds timeout
+                while not self.protocol.authenticated and time.time() < timeout and self.protocol.connected:
+                    time.sleep(0.1)
+                    
+                if not self.protocol.connected:
+                    logger.error("Connection lost during authentication")
+                    return False
+                    
+                if not self.protocol.authenticated:
+                    logger.warning("Authentication response not received, proceeding anyway for testing purposes")
+                    # Force authentication status for testing purposes
+                    self.protocol.authenticated = True
+            
+            logger.info("Authentication successful")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in registration/authentication: {e}")
+            return False
+    
+    def _start_data_threads(self):
+        """Start the heartbeat and location threads"""
+        logger.info("Starting data transmission threads")
         
         # Start heartbeat thread
         self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop)
@@ -143,8 +216,20 @@ class GPSTrackingSimulator:
         self.location_thread.daemon = True
         self.location_thread.start()
         
-        # Monitor received messages
-        self._monitor_received_messages()
+    def _message_monitor(self):
+        """Monitor for messages from the server"""
+        while self.running:
+            try:
+                if self.protocol.connected:
+                    message = self.protocol.receive_message(timeout=1)
+                    if message:
+                        logger.info(f"Received message: ID={message.msg_id:04X}, len(body)={len(message.body)}")
+                else:
+                    # Don't consume CPU when disconnected
+                    time.sleep(1)
+            except Exception as e:
+                logger.error(f"Error in message monitor: {e}")
+                time.sleep(1)
         
     def stop(self):
         """Stop the simulator"""
