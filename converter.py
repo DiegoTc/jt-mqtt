@@ -26,11 +26,16 @@ try:
     load_dotenv()
     
     # Configure basic logging before importing modules that might use it
+    # Get log level from environment or use INFO as default
+    log_level_name = os.environ.get('LOG_LEVEL', 'DEBUG')
+    log_level = getattr(logging, log_level_name)
+    
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     logger = logging.getLogger('jt808-converter')
+    logger.info(f"Logging initialized at level: {log_level_name}")
     
     # Now import our custom modules
     try:
@@ -193,16 +198,19 @@ class JT808Server:
             client_socket: Client socket
         """
         buffer = self.clients[client_socket]['buffer']
+        device_id = self.clients[client_socket]['device_id'] or 'unknown'
         
         while len(buffer) > 2:
             # Find start and end markers
             start_idx = buffer.find(b'\x7e')
             if start_idx == -1:
+                logger.debug(f"[{device_id}] No start marker found in buffer, clearing buffer")
                 buffer.clear()
                 break
                 
             # Remove any data before the start marker
             if start_idx > 0:
+                logger.debug(f"[{device_id}] Found garbage before start marker, removing {start_idx} bytes")
                 buffer = buffer[start_idx:]
                 self.clients[client_socket]['buffer'] = buffer
                 
@@ -210,6 +218,7 @@ class JT808Server:
             end_idx = buffer.find(b'\x7e', 1)
             if end_idx == -1:
                 # No complete message yet
+                logger.debug(f"[{device_id}] No end marker found, waiting for more data. Buffer size: {len(buffer)} bytes")
                 break
                 
             # Extract the complete message
@@ -218,13 +227,17 @@ class JT808Server:
             self.clients[client_socket]['buffer'] = buffer
             
             # Debug log the message data in detail
-            logger.debug(f"Raw message data: {message_data}")
-            logger.debug(f"Raw message data length: {len(message_data)} bytes")
-            logger.debug(f"Raw message data hex: {message_data.hex()}")
+            logger.debug(f"[{device_id}] Raw message data: {message_data}")
+            logger.debug(f"[{device_id}] Raw message data length: {len(message_data)} bytes")
+            logger.debug(f"[{device_id}] Raw message data hex: {message_data.hex()}")
             
             try:
                 # Decode the message
                 message = Message.decode(message_data)
+                
+                # Log the message ID and type for debugging
+                msg_id_hex = f"0x{message.msg_id:04X}"
+                logger.debug(f"[{device_id}] Decoded message ID: {msg_id_hex}")
                 
                 # Update device ID if not yet known
                 if not self.clients[client_socket]['device_id'] and hasattr(message, 'phone_no'):
@@ -239,7 +252,7 @@ class JT808Server:
                 self._process_message(client_socket, message)
             except Exception as e:
                 import traceback
-                logger.error(f"Failed to decode message: {e}")
+                logger.error(f"[{device_id}] Failed to decode message: {e}")
                 logger.error(traceback.format_exc())
                 
     def _process_message(self, client_socket, message):
@@ -251,7 +264,11 @@ class JT808Server:
             message: Decoded Message object
         """
         device_id = self.clients[client_socket]['device_id'] or 'unknown'
-        logger.debug(f"Received message from {device_id}: {message.msg_id:04X}, length: {len(message.body)} bytes")
+        
+        # Enhanced logging - message body hex for all messages
+        body_hex = message.body.hex() if message.body else "empty"
+        logger.debug(f"[{device_id}] Message ID: 0x{message.msg_id:04X}, Serial: {message.msg_serial_no}, Body length: {len(message.body)} bytes")
+        logger.debug(f"[{device_id}] Message body hex: {body_hex}")
         
         # Handle different message types
         if message.msg_id == MessageID.TERMINAL_HEARTBEAT:
@@ -267,12 +284,44 @@ class JT808Server:
             self._publish_registration(device_id, message)
             
         elif message.msg_id == MessageID.TERMINAL_AUTH:
-            logger.info(f"Authentication from {device_id}")
+            logger.info(f"Authentication from {device_id}, msg_serial_no={message.msg_serial_no}")
+            # Log the authentication message details
+            if message.body and len(message.body) > 0:
+                auth_len = message.body[0]
+                logger.debug(f"Authentication body length: {len(message.body)}, auth_code_len={auth_len}")
+                
+                if 1 + auth_len <= len(message.body):
+                    try:
+                        auth_code = message.body[1:1+auth_len].decode('utf-8')
+                        logger.debug(f"Authentication code received: '{auth_code}'")
+                    except Exception as e:
+                        logger.error(f"Failed to decode auth code: {e}")
+            
             self._send_general_response(client_socket, message, 0)
             self._publish_authentication(device_id, message)
             
         elif message.msg_id == MessageID.LOCATION_REPORT:
-            logger.info(f"Location report from {device_id}")
+            logger.info(f"Location report from {device_id}, msg_serial_no={message.msg_serial_no}")
+            
+            if len(message.body) >= 28:
+                try:
+                    # Extract basic location information for logging
+                    alarm_flag, status, lat_value, lon_value = struct.unpack('>IIII', message.body[:16])
+                    
+                    # Convert coordinates for logging
+                    latitude = dms_to_decimal(lat_value)
+                    longitude = dms_to_decimal(lon_value)
+                    
+                    # Apply direction flags
+                    if status & StatusBit.LAT_SOUTH:
+                        latitude = -latitude
+                    if status & StatusBit.LON_WEST:
+                        longitude = -longitude
+                    
+                    logger.debug(f"Location data - lat: {latitude}, lon: {longitude}, alarm: 0x{alarm_flag:08X}, status: 0x{status:08X}")
+                except Exception as e:
+                    logger.error(f"Error parsing location data for logging: {e}")
+            
             self._send_general_response(client_socket, message, 0)
             self._publish_location(device_id, message)
             
@@ -287,7 +336,7 @@ class JT808Server:
             self._publish_logout(device_id)
             
         else:
-            logger.info(f"Unsupported message type from {device_id}: {message.msg_id:04X}")
+            logger.info(f"Unsupported message type from {device_id}: 0x{message.msg_id:04X}")
             self._send_general_response(client_socket, message, 3)  # Unsupported
             
     def _send_general_response(self, client_socket, message, result):
@@ -300,14 +349,21 @@ class JT808Server:
             result: Result code
         """
         try:
+            device_id = self.clients[client_socket]['device_id'] or 'unknown'
+            logger.debug(f"[{device_id}] Creating general response for msg_id=0x{message.msg_id:04X}, serial={message.msg_serial_no}, result={result}")
+            
             response = Message.create_platform_general_response(
                 message.phone_no, message.msg_serial_no, message.msg_id, result
             )
             
-            client_socket.sendall(response.encode())
-            logger.debug(f"Sent general response to {message.phone_no}: msg_id={message.msg_id:04X}, result={result}")
+            encoded_response = response.encode()
+            logger.debug(f"[{device_id}] General response hex: {encoded_response.hex()}")
+            
+            client_socket.sendall(encoded_response)
+            logger.debug(f"[{device_id}] Sent general response: msg_id=0x{message.msg_id:04X}, result={result}")
         except Exception as e:
             logger.error(f"Failed to send general response: {e}")
+            logger.error(traceback.format_exc())
             
     def _send_registration_response(self, client_socket, message, result, auth_code):
         """
@@ -325,15 +381,23 @@ class JT808Server:
                 auth_code = "123456"
                 logger.warning(f"Empty auth code detected, using default: '{auth_code}'")
             
+            # Log registration details for debugging
+            device_id = self.clients[client_socket]['device_id'] or 'unknown'
+            logger.debug(f"[{device_id}] Preparing registration response, serial={message.msg_serial_no}, result={result}")
+            
             # Prepare registration response body - pack the message serial number and result
             body = struct.pack('>HB', message.msg_serial_no, result)
             
+            # For JT808/T protocol, the auth code must be properly formatted:
+            # 1. Use ASCII encoding for better compatibility
+            # 2. Ensure a non-zero length
+            auth_bytes = auth_code.encode('ascii')
+            
             # Add auth code with proper length byte
-            auth_bytes = auth_code.encode('utf-8')
             body += bytes([len(auth_bytes)]) + auth_bytes
             
             # Debug the auth code bytes
-            logger.debug(f"Auth code: '{auth_code}', bytes representation: {auth_bytes.hex()}, length: {len(auth_bytes)}")
+            logger.debug(f"[{device_id}] Auth code: '{auth_code}', bytes: {auth_bytes.hex()}, length: {len(auth_bytes)}")
             
             # Create response message
             response = Message(
@@ -343,8 +407,8 @@ class JT808Server:
             )
             
             encoded_response = response.encode()
-            logger.debug(f"Registration response body: {body.hex()}")
-            logger.debug(f"Registration response encoded: {encoded_response.hex()}")
+            logger.debug(f"[{device_id}] Registration response body: {body.hex()}")
+            logger.debug(f"[{device_id}] Registration response encoded: {encoded_response.hex()}")
             
             client_socket.sendall(encoded_response)
             logger.info(f"Sent registration response to {message.phone_no}: result={result}, auth_code='{auth_code}'")
