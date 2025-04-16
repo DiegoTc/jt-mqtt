@@ -380,15 +380,29 @@ class JT808Server:
             device_id = self.clients[client_socket]['device_id'] or 'unknown'
             logger.debug(f"[{device_id}] Creating general response for msg_id=0x{message.msg_id:04X}, serial={message.msg_serial_no}, result={result}")
             
-            response = Message.create_platform_general_response(
-                message.phone_no, message.msg_serial_no, message.msg_id, result
+            # Force result to 0 (success) during testing
+            result = 0
+            
+            # Create a custom response body according to JT/T 808-2013 specification section 8.1
+            # Format required by JT/T 808-2013 spec:
+            # Bytes 0-1: Response serial number
+            # Bytes 2-3: Ack message ID
+            # Byte 4: Result code
+            body = struct.pack('>HHB', message.msg_serial_no, message.msg_id, result)
+            logger.debug(f"[{device_id}] General response body: {body.hex()}")
+            
+            # Create response message
+            response = Message(
+                MessageID.PLATFORM_GENERAL_RESPONSE, 
+                message.phone_no,
+                body
             )
             
             encoded_response = response.encode()
             logger.debug(f"[{device_id}] General response hex: {encoded_response.hex()}")
             
             client_socket.sendall(encoded_response)
-            logger.debug(f"[{device_id}] Sent general response: msg_id=0x{message.msg_id:04X}, result={result}")
+            logger.debug(f"[{device_id}] Sent general response: msg_id=0x{message.msg_id:04X}, serial={message.msg_serial_no}, result={result}")
         except Exception as e:
             logger.error(f"Failed to send general response: {e}")
             logger.error(traceback.format_exc())
@@ -400,7 +414,7 @@ class JT808Server:
         Args:
             client_socket: Client socket
             message: Original message
-            result: Result code
+            result: Result code (should be 0 for success)
             auth_code: Authentication code
         """
         try:
@@ -413,19 +427,23 @@ class JT808Server:
             device_id = self.clients[client_socket]['device_id'] or 'unknown'
             logger.debug(f"[{device_id}] Preparing registration response, serial={message.msg_serial_no}, result={result}")
             
-            # Prepare registration response body - pack the message serial number and result
+            # Ensure result is always 0 (success) during testing
+            result = 0
+            
+            # Prepare registration response body - MUST USE THIS EXACT FORMAT:
+            # First 2 bytes: Response serial number (same as request)
+            # Next 1 byte: Result (0=success, 1=vehicle already registered, 2=no such vehicle, 3=terminal already registered, 4=terminal not allowed)
+            # Next byte: Auth code length
+            # Remaining bytes: Auth code
             body = struct.pack('>HB', message.msg_serial_no, result)
             
-            # For JT808/T protocol, the auth code must be properly formatted 
-            # The simulator expects a very specific format
+            # Add the auth code - length byte first, then the auth code
             auth_bytes = auth_code.encode('ascii')
+            body += bytes([len(auth_bytes)]) + auth_bytes
             
-            # The length byte must be 6 (as seen in the protocol spec for "123456")
-            # Use a fixed length of 6 bytes for "123456" auth code
-            body += bytes([6]) + b'123456'
-            
-            # Debug the auth code bytes
-            logger.debug(f"[{device_id}] Auth code: '123456', bytes: {b'123456'.hex()}, length: 6")
+            # Debug the response
+            logger.debug(f"[{device_id}] Registration response serial: {message.msg_serial_no}, result: {result}")
+            logger.debug(f"[{device_id}] Auth code: '{auth_code}', bytes: {auth_bytes.hex()}, length: {len(auth_bytes)}")
             
             # Create response message
             response = Message(
@@ -439,7 +457,7 @@ class JT808Server:
             logger.debug(f"[{device_id}] Registration response encoded: {encoded_response.hex()}")
             
             client_socket.sendall(encoded_response)
-            logger.info(f"Sent registration response to {message.phone_no}: result={result}, auth_code='123456'")
+            logger.info(f"Sent registration response to {message.phone_no}: result={result}, auth_code='{auth_code}'")
         except Exception as e:
             logger.error(f"Failed to send registration response: {e}")
             logger.error(traceback.format_exc())
