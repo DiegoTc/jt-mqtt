@@ -16,10 +16,11 @@ try:
     import json
     import struct
     import traceback
+    import random
     import paho.mqtt.client as mqtt
     import ssl
     from datetime import datetime
-    import dotenv
+    from dotenv import load_dotenv
     
     # Load environment variables from .env file
     dotenv.load_dotenv()
@@ -730,8 +731,11 @@ class JT808Server:
             payload: Message payload (will be converted to JSON)
         """
         # Check if MQTT client is available and connected
-        if self.mqtt_client is None or not self.mqtt_config.get('mqtt_connected', False):
-            logger.debug(f"Simulated MQTT publish to {topic}: {payload}")
+        if self.mqtt_client is None:
+            logger.warning(f"MQTT client is not available. Simulated publish to {topic}")
+            return
+        if not self.mqtt_config.get('mqtt_connected', False):
+            logger.warning(f"MQTT client is not connected. Simulated publish to {topic}")
             return
             
         try:
@@ -742,27 +746,80 @@ class JT808Server:
             # Make sure the topic is a string
             topic = str(topic)
             
-            result = self.mqtt_client.publish(topic, json.dumps(payload), qos=1)
+            # Convert payload to JSON with explicit handling for non-serializable objects
+            try:
+                json_payload = json.dumps(payload)
+            except TypeError as e:
+                logger.error(f"JSON serialization error for topic {topic}: {e}")
+                # Try a more robust approach
+                safe_payload = {}
+                for k, v in payload.items():
+                    try:
+                        # Test if the value is JSON serializable
+                        json.dumps({k: v})
+                        safe_payload[k] = v
+                    except TypeError:
+                        safe_payload[k] = str(v)
+                json_payload = json.dumps(safe_payload)
+                logger.info(f"Used fallback serialization for topic {topic}")
+            
+            logger.debug(f"Publishing to MQTT: {topic} - {json_payload[:100]}...")
+            result = self.mqtt_client.publish(topic, json_payload, qos=1)
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
-                logger.error(f"Failed to publish to {topic}: {result}")
+                logger.error(f"Failed to publish to {topic}: {result.rc}")
+                error_codes = {
+                    mqtt.MQTT_ERR_AGAIN: "Queue full",
+                    mqtt.MQTT_ERR_NO_CONN: "No connection",
+                    mqtt.MQTT_ERR_PROTOCOL: "Protocol error",
+                    mqtt.MQTT_ERR_INVAL: "Invalid parameters",
+                    mqtt.MQTT_ERR_PAYLOAD_SIZE: "Payload too large"
+                }
+                if result.rc in error_codes:
+                    logger.error(f"MQTT error: {error_codes[result.rc]}")
+            else:
+                # Log successful publish occasionally to avoid excessive logging
+                if random.random() < 0.1:  # ~10% of messages
+                    logger.info(f"Successfully published to {topic}")
         except Exception as e:
             logger.error(f"MQTT publish error: {e}")
+            import traceback
+            logger.error(f"MQTT publish error details: {traceback.format_exc()}")
 
 def on_connect(client, userdata, flags, rc):
     """MQTT connect callback"""
     if rc == 0:
-        logger.info("Connected to MQTT broker")
+        logger.info("Connected to MQTT broker successfully")
+        # Publish a test message to confirm connection
+        try:
+            client.publish("pettracker/system/status", json.dumps({"status": "connected", "timestamp": datetime.now().isoformat()}))
+            logger.info("Published test message to MQTT broker")
+        except Exception as e:
+            logger.error(f"Failed to publish test message: {e}")
     else:
         logger.error(f"Failed to connect to MQTT broker: {rc}")
+        # Log the meaning of the connection codes
+        rc_codes = {
+            0: "Connection successful",
+            1: "Connection refused - incorrect protocol version",
+            2: "Connection refused - invalid client identifier",
+            3: "Connection refused - server unavailable",
+            4: "Connection refused - bad username or password",
+            5: "Connection refused - not authorised"
+        }
+        if rc in rc_codes:
+            logger.error(f"MQTT Connection error: {rc_codes[rc]}")
 
 def on_disconnect(client, userdata, rc):
     """MQTT disconnect callback"""
     if rc != 0:
         logger.error(f"Unexpected MQTT disconnection: {rc}")
+        logger.info("Attempting to reconnect to MQTT broker...")
 
 def on_publish(client, userdata, mid):
     """MQTT publish callback"""
-    pass  # Can be used for QoS tracking
+    # Log message ID for important publishes
+    if mid % 10 == 0:  # Log every 10th publish to avoid excessive logging
+        logger.debug(f"Published message with ID: {mid}")
 
 def load_config():
     """Load configuration from file or env vars, with appropriate defaults"""
