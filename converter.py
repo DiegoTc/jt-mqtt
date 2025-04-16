@@ -178,26 +178,42 @@ class JT808Server:
             client_socket: Client socket
         """
         buffer = self.clients[client_socket]['buffer']
+        device_id = self.clients[client_socket]['device_id'] or 'unknown'
+        
+        logger.info(f"[{device_id}] Client handler thread started for {self.clients[client_socket]['addr']}")
         
         while self.running and client_socket in self.clients:
             try:
                 # Receive data
+                logger.info(f"[{device_id}] Waiting for data from client...")
                 data = client_socket.recv(1024)
+                
                 if not data:
-                    logger.info(f"Connection closed by client {self.clients[client_socket]['addr']}")
+                    logger.info(f"[{device_id}] Connection closed by client {self.clients[client_socket]['addr']}")
                     self._close_client(client_socket)
                     break
+                
+                # Log received data
+                logger.info(f"[{device_id}] Received {len(data)} bytes: {data.hex()}")
                     
                 # Add to buffer
                 buffer.extend(data)
+                logger.info(f"[{device_id}] Added data to buffer, new size: {len(buffer)} bytes, buffer: {buffer.hex()}")
+                
+                # Store the updated buffer reference
+                self.clients[client_socket]['buffer'] = buffer
                 
                 # Process complete messages in the buffer
                 self._process_buffer(client_socket)
             except Exception as e:
+                import traceback
                 if self.running and client_socket in self.clients:
-                    logger.error(f"Error handling client {self.clients[client_socket]['addr']}: {e}")
+                    logger.error(f"[{device_id}] Error handling client {self.clients[client_socket]['addr']}: {e}")
+                    logger.error(traceback.format_exc())
                     self._close_client(client_socket)
                 break
+        
+        logger.info(f"[{device_id}] Client handler thread terminated for {self.clients[client_socket]['addr'] if client_socket in self.clients else 'unknown'}")
                 
     def _process_buffer(self, client_socket):
         """
@@ -209,17 +225,20 @@ class JT808Server:
         buffer = self.clients[client_socket]['buffer']
         device_id = self.clients[client_socket]['device_id'] or 'unknown'
         
+        # Log every time we process a buffer for visibility
+        logger.info(f"[{device_id}] Processing buffer, size: {len(buffer)} bytes, hex: {buffer.hex() if len(buffer) < 100 else buffer[:100].hex() + '...'}")
+        
         while len(buffer) > 2:
             # Find start and end markers
             start_idx = buffer.find(b'\x7e')
             if start_idx == -1:
-                logger.debug(f"[{device_id}] No start marker found in buffer, clearing buffer")
+                logger.warning(f"[{device_id}] No start marker found in buffer, clearing buffer")
                 buffer.clear()
                 break
                 
             # Remove any data before the start marker
             if start_idx > 0:
-                logger.debug(f"[{device_id}] Found garbage before start marker, removing {start_idx} bytes")
+                logger.warning(f"[{device_id}] Found garbage before start marker, removing {start_idx} bytes: {buffer[:start_idx].hex()}")
                 buffer = buffer[start_idx:]
                 self.clients[client_socket]['buffer'] = buffer
                 
@@ -227,7 +246,7 @@ class JT808Server:
             end_idx = buffer.find(b'\x7e', 1)
             if end_idx == -1:
                 # No complete message yet
-                logger.debug(f"[{device_id}] No end marker found, waiting for more data. Buffer size: {len(buffer)} bytes")
+                logger.info(f"[{device_id}] No end marker found, waiting for more data. Buffer size: {len(buffer)} bytes")
                 break
                 
             # Extract the complete message
@@ -236,9 +255,9 @@ class JT808Server:
             self.clients[client_socket]['buffer'] = buffer
             
             # Debug log the message data in detail
-            logger.debug(f"[{device_id}] Raw message data: {message_data}")
-            logger.debug(f"[{device_id}] Raw message data length: {len(message_data)} bytes")
-            logger.debug(f"[{device_id}] Raw message data hex: {message_data.hex()}")
+            logger.info(f"[{device_id}] Raw message data: {message_data}")
+            logger.info(f"[{device_id}] Raw message data length: {len(message_data)} bytes")
+            logger.info(f"[{device_id}] Raw message data hex: {message_data.hex()}")
             
             try:
                 # Decode the message
@@ -246,7 +265,7 @@ class JT808Server:
                 
                 # Log the message ID and type for debugging
                 msg_id_hex = f"0x{message.msg_id:04X}"
-                logger.debug(f"[{device_id}] Decoded message ID: {msg_id_hex}")
+                logger.info(f"[{device_id}] Decoded message ID: {msg_id_hex}")
                 
                 # Update device ID if not yet known
                 if not self.clients[client_socket]['device_id'] and hasattr(message, 'phone_no'):
