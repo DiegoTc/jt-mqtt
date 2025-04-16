@@ -83,6 +83,10 @@ def on_subscribe(client, userdata, mid, granted_qos):
     """Callback when subscription is made"""
     logger.info(f"Subscription confirmed. Message ID: {mid}, Granted QoS: {granted_qos}")
 
+def on_publish(client, userdata, mid):
+    """Callback when a message is published"""
+    logger.info(f"Message published with ID: {mid}")
+
 def run_test():
     """Run the MQTT test"""
     global message_received
