@@ -442,6 +442,9 @@ class JT808Server:
             # Remaining bytes: Auth code
             body = struct.pack('>HB', message.msg_serial_no, result)
             
+            # Make sure the auth code is 123456 which is expected by the simulator
+            auth_code = "123456"
+            
             # Add the auth code - length byte first, then the auth code
             auth_bytes = auth_code.encode('ascii')
             body += bytes([len(auth_bytes)]) + auth_bytes

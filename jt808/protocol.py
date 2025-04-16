@@ -168,7 +168,12 @@ class JT808Protocol:
             return
             
         try:
-            ack_serial_no, ack_id, result = struct.unpack('>HHB', message.body)
+            # Only use the first 5 bytes for unpacking
+            # The simulator may receive more than 5 bytes due to different protocol implementations
+            response_data = message.body[:5]
+            self.logger.debug(f"Using first 5 bytes for parsing: {response_data.hex()}")
+            
+            ack_serial_no, ack_id, result = struct.unpack('>HHB', response_data)
             
             self.logger.info(f"Platform response: serial={ack_serial_no}, msg_id={ack_id:04X}, result={result}")
             
