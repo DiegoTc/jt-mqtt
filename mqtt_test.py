@@ -27,8 +27,14 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         logger.info(f"Connected to MQTT broker with result code {rc}")
         if client._client_id == b"mqtt-test-sub":
-            client.subscribe("test/message")
-            logger.info(f"Subscribed to topic: test/message")
+            # Use a unique topic with timestamp to avoid conflicts
+            import time
+            timestamp = int(time.time())
+            topic = f"test/pettracker/{timestamp}"
+            client.subscribe(topic)
+            logger.info(f"Subscribed to topic: {topic}")
+            # Store the topic in userdata for the publisher to use
+            client._userdata = topic
     else:
         logger.error(f"Failed to connect to MQTT broker with result code {rc}")
 
@@ -80,16 +86,29 @@ def run_test():
         # Wait for subscriber to connect
         time.sleep(2)
 
+        # Wait for the subscriber to create the topic and share it
+        wait_count = 0
+        while hasattr(sub_client, '_userdata') is False or sub_client._userdata is None:
+            time.sleep(0.5)
+            wait_count += 1
+            if wait_count > 10:  # 5 seconds max
+                logger.error("Timed out waiting for subscriber to create topic")
+                break
+        
+        # Get the topic from the subscriber
+        topic = getattr(sub_client, '_userdata', 'test/message')
+        
         # Publish test message
         test_message = {"timestamp": time.time(), "message": "Hello from MQTT test"}
-        logger.info(f"Publishing message to test/message: {test_message}")
-        pub_client.publish("test/message", json.dumps(test_message), qos=1)
+        logger.info(f"Publishing message to {topic}: {test_message}")
+        pub_client.publish(topic, json.dumps(test_message), qos=1)
 
         # Wait for the message to be received
-        timeout = 10
+        timeout = 30  # Longer timeout for public broker
         start_time = time.time()
         while not message_received and (time.time() - start_time) < timeout:
             time.sleep(0.5)
+            logger.info(f"Waiting for message... ({int(time.time() - start_time)}s elapsed)")
 
         if message_received:
             logger.info("Test successful: Message was published and received")
