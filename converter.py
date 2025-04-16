@@ -383,13 +383,18 @@ class JT808Server:
             # Force result to 0 (success) during testing
             result = 0
             
-            # Create a custom response body according to JT/T 808-2013 specification section 8.1
-            # Format required by JT/T 808-2013 spec:
-            # Bytes 0-1: Response serial number
-            # Bytes 2-3: Ack message ID
-            # Byte 4: Result code
+            # Create a response body according to JT/T 808-2013 specification section 8.1
+            # The simulator is expecting EXACTLY 5 bytes in this format:
+            # Bytes 0-1: Response serial number (2 bytes)
+            # Bytes 2-3: Ack message ID (2 bytes)
+            # Byte 4: Result code (1 byte)
             body = struct.pack('>HHB', message.msg_serial_no, message.msg_id, result)
-            logger.debug(f"[{device_id}] General response body: {body.hex()}")
+            
+            # Log in detail to ensure it's the exact 5 bytes format expected
+            logger.debug(f"[{device_id}] Response serial: {message.msg_serial_no} (2 bytes)")
+            logger.debug(f"[{device_id}] Message ID: 0x{message.msg_id:04X} (2 bytes)")
+            logger.debug(f"[{device_id}] Result: {result} (1 byte)")
+            logger.debug(f"[{device_id}] General response body hex: {body.hex()}, length: {len(body)} bytes")
             
             # Create response message
             response = Message(
@@ -399,7 +404,7 @@ class JT808Server:
             )
             
             encoded_response = response.encode()
-            logger.debug(f"[{device_id}] General response hex: {encoded_response.hex()}")
+            logger.debug(f"[{device_id}] General response encoded hex: {encoded_response.hex()}")
             
             client_socket.sendall(encoded_response)
             logger.debug(f"[{device_id}] Sent general response: msg_id=0x{message.msg_id:04X}, serial={message.msg_serial_no}, result={result}")
