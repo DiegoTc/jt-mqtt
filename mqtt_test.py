@@ -40,8 +40,13 @@ def on_connect(client, userdata, flags, rc):
         logger.info(f"Connected to MQTT broker with result code {rc}, client_id: {client._client_id.decode()}")
         # If this is the subscriber client, subscribe to the test topic
         if client._client_id.startswith(b"mqtt-test-sub"):
-            client.subscribe(test_topic)
-            logger.info(f"Subscribed to topic: {test_topic}")
+            client.subscribe(test_topic, qos=1)
+            logger.info(f"Subscribed to topic: {test_topic} with QoS 1")
+            
+            # Also subscribe to the wildcard topic to see other messages
+            wildcard_topic = "pettracker/#"
+            client.subscribe(wildcard_topic, qos=1)
+            logger.info(f"Also subscribed to wildcard topic: {wildcard_topic}")
     else:
         logger.error(f"Failed to connect to MQTT broker with result code {rc}")
 
@@ -55,13 +60,27 @@ def on_disconnect(client, userdata, rc):
 def on_message(client, userdata, msg):
     """Callback when a message is received"""
     global message_received
+    logger.info(f"Message received on topic {msg.topic} with QoS {msg.qos}")
+    
     try:
-        payload = json.loads(msg.payload.decode())
-        logger.info(f"Received message on {msg.topic}: {payload}")
-        message_received = True
-    except json.JSONDecodeError:
-        logger.warning(f"Received non-JSON message on {msg.topic}: {msg.payload.decode()}")
-        message_received = True
+        payload = msg.payload.decode()
+        logger.info(f"Raw payload: {payload}")
+        
+        try:
+            json_payload = json.loads(payload)
+            logger.info(f"Parsed JSON: {json_payload}")
+            message_received = True
+        except json.JSONDecodeError:
+            logger.warning(f"Received non-JSON message: {payload}")
+            # Still count as received for wildcard topics
+            if msg.topic == test_topic:
+                message_received = True
+    except Exception as e:
+        logger.error(f"Error processing message: {e}")
+
+def on_subscribe(client, userdata, mid, granted_qos):
+    """Callback when subscription is made"""
+    logger.info(f"Subscription confirmed. Message ID: {mid}, Granted QoS: {granted_qos}")
 
 def run_test():
     """Run the MQTT test"""
