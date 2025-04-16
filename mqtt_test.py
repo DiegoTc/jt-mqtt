@@ -43,10 +43,11 @@ def on_connect(client, userdata, flags, rc):
             client.subscribe(test_topic, qos=1)
             logger.info(f"Subscribed to topic: {test_topic} with QoS 1")
             
-            # Also subscribe to the wildcard topic to see other messages
-            wildcard_topic = "pettracker/#"
-            client.subscribe(wildcard_topic, qos=1)
-            logger.info(f"Also subscribed to wildcard topic: {wildcard_topic}")
+            # Subscribe to multiple wildcard topics to see all messages
+            wildcard_topics = ["pettracker/#", "+/#", "#"]
+            for topic in wildcard_topics:
+                client.subscribe(topic, qos=1)
+                logger.info(f"Also subscribed to wildcard topic: {topic}")
     else:
         logger.error(f"Failed to connect to MQTT broker with result code {rc}")
 
@@ -90,10 +91,12 @@ def run_test():
     sub_client.on_connect = on_connect
     sub_client.on_disconnect = on_disconnect
     sub_client.on_message = on_message
+    sub_client.on_subscribe = on_subscribe
 
     # Set up callbacks for publisher
     pub_client.on_connect = on_connect
     pub_client.on_disconnect = on_disconnect
+    pub_client.on_publish = on_publish
 
     # Connect to broker
     try:
