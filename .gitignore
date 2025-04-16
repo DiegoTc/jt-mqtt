@@ -1,0 +1,40 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Environment files (that might contain secrets)
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+tmp/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Replit specific
+.replit
+.breakpoints
+replit.nix
+
+# IDE specific
+.idea/
+.vscode/
