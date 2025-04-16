@@ -887,7 +887,7 @@ def load_config():
         # Local Mosquitto Configuration
         logger.info("Using local MQTT broker configuration")
         default_config['mqtt_broker_type'] = 'local'
-        default_config['mqtt_host'] = os.environ.get('LOCAL_MQTT_HOST', 'localhost')
+        default_config['mqtt_host'] = os.environ.get('LOCAL_MQTT_HOST', 'broker.hivemq.com')  # Use HiveMQ as the default
         
         # Safely convert port to integer
         local_mqtt_port = os.environ.get('LOCAL_MQTT_PORT', '1883')

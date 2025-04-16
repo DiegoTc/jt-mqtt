@@ -6,6 +6,8 @@ import time
 import paho.mqtt.client as mqtt
 import json
 import logging
+import uuid
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -14,27 +16,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger("mqtt-test")
 
+# Generate unique client IDs
+sub_client_id = f"mqtt-test-sub-{uuid.uuid4().hex[:8]}"
+pub_client_id = f"mqtt-test-pub-{uuid.uuid4().hex[:8]}"
+
 # MQTT client for subscribing
-sub_client = mqtt.Client(client_id="mqtt-test-sub", clean_session=True)
+sub_client = mqtt.Client(client_id=sub_client_id, clean_session=True)
 # MQTT client for publishing
-pub_client = mqtt.Client(client_id="mqtt-test-pub", clean_session=True)
+pub_client = mqtt.Client(client_id=pub_client_id, clean_session=True)
 
 # Tracking whether we've received the test message
 message_received = False
 
+# Define a fixed test topic - using a fixed one for simplicity
+test_topic = "test/pettracker/mqtt_test"
+
+# Lock for thread safety
+topic_lock = threading.Lock()
+
 def on_connect(client, userdata, flags, rc):
     """Callback when client connects to the broker"""
     if rc == 0:
-        logger.info(f"Connected to MQTT broker with result code {rc}")
-        if client._client_id == b"mqtt-test-sub":
-            # Use a unique topic with timestamp to avoid conflicts
-            import time
-            timestamp = int(time.time())
-            topic = f"test/pettracker/{timestamp}"
-            client.subscribe(topic)
-            logger.info(f"Subscribed to topic: {topic}")
-            # Store the topic in userdata for the publisher to use
-            client._userdata = topic
+        logger.info(f"Connected to MQTT broker with result code {rc}, client_id: {client._client_id.decode()}")
+        # If this is the subscriber client, subscribe to the test topic
+        if client._client_id.startswith(b"mqtt-test-sub"):
+            client.subscribe(test_topic)
+            logger.info(f"Subscribed to topic: {test_topic}")
     else:
         logger.error(f"Failed to connect to MQTT broker with result code {rc}")
 
@@ -83,25 +90,24 @@ def run_test():
         pub_client.connect(broker_address, broker_port, 60)
         pub_client.loop_start()
 
-        # Wait for subscriber to connect
-        time.sleep(2)
-
-        # Wait for the subscriber to create the topic and share it
-        wait_count = 0
-        while hasattr(sub_client, '_userdata') is False or sub_client._userdata is None:
-            time.sleep(0.5)
-            wait_count += 1
-            if wait_count > 10:  # 5 seconds max
-                logger.error("Timed out waiting for subscriber to create topic")
-                break
+        # Wait for subscriber to connect and subscribe
+        time.sleep(3)
         
-        # Get the topic from the subscriber
-        topic = getattr(sub_client, '_userdata', 'test/message')
-        
+        # Use our fixed test topic
         # Publish test message
-        test_message = {"timestamp": time.time(), "message": "Hello from MQTT test"}
-        logger.info(f"Publishing message to {topic}: {test_message}")
-        pub_client.publish(topic, json.dumps(test_message), qos=1)
+        test_message = {
+            "timestamp": time.time(),
+            "message": "Hello from MQTT test",
+            "client_id": pub_client_id
+        }
+        logger.info(f"Publishing message to {test_topic}: {test_message}")
+        result = pub_client.publish(test_topic, json.dumps(test_message), qos=1)
+        
+        # Check publish result
+        if result.rc != mqtt.MQTT_ERR_SUCCESS:
+            logger.error(f"Failed to publish message: {mqtt.error_string(result.rc)}")
+        else:
+            logger.info("Message published successfully")
 
         # Wait for the message to be received
         timeout = 30  # Longer timeout for public broker
