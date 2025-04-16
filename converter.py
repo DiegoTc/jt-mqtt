@@ -23,7 +23,7 @@ try:
     from dotenv import load_dotenv
     
     # Load environment variables from .env file
-    dotenv.load_dotenv()
+    load_dotenv()
     
     # Configure basic logging before importing modules that might use it
     logging.basicConfig(
