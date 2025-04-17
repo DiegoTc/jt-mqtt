@@ -100,7 +100,26 @@ class JT808Server:
         self.server_socket = None
         self.clients = {}  # {socket: {'addr': addr, 'buffer': bytearray(), 'device_id': None}}
         
-        # Cache for position throttling
+        # Device state tracking for dual-gating (time + distance)
+        self.device_state = {}  # {device_id: {'lat': lat, 'lon': lon, 'last_pub_time': timestamp, 'activity': activity}}
+        
+        # Activity-based threshold settings
+        self.thresholds = {
+            'fast_moving': {  # > 20 km/h
+                'interval': mqtt_config.get('fast_interval', 5),       # seconds
+                'distance': mqtt_config.get('fast_distance', 5.0)      # meters
+            },
+            'walking': {      # 5-20 km/h
+                'interval': mqtt_config.get('walking_interval', 60),      # seconds
+                'distance': mqtt_config.get('walking_distance', 10.0)     # meters
+            },
+            'resting': {      # < 5 km/h
+                'interval': mqtt_config.get('resting_interval', 300),     # seconds
+                'distance': mqtt_config.get('resting_distance', 15.0)     # meters
+            }
+        }
+        
+        # Cache for position throttling (legacy, keeping for backward compatibility)
         self.position_cache = {}  # {device_id: {'lat': lat, 'lon': lon, 'timestamp': timestamp}}
         
         # Event state tracking for debouncing
@@ -727,64 +746,73 @@ class JT808Server:
             if status & StatusBit.LON_WEST:
                 longitude = -longitude
             
-            # Check if we should throttle this position update
+            # Determine pet's current activity level based on speed
+            activity_level = "resting"
+            if speed > 20:  # km/h
+                activity_level = "fast_moving"
+            elif speed > 5:  # km/h
+                activity_level = "walking"
+            
+            # Initialize the device state if this is the first message from this device
+            now = time.time()
+            if device_id not in self.device_state:
+                self.device_state[device_id] = {
+                    'lat': latitude,
+                    'lon': longitude,
+                    'last_pub_time': 0,  # Force first message to be published
+                    'activity': activity_level
+                }
+            
+            # Get the current thresholds based on activity level
+            thresholds = self.thresholds[activity_level]
+            min_interval = thresholds['interval']
+            min_distance = thresholds['distance']
+            
+            # Dual-gating check: time-based AND distance-based throttling
             should_publish = True
-            if self.throttle_duplicates and device_id in self.position_cache:
-                cached_pos = self.position_cache[device_id]
+            
+            if self.throttle_duplicates:
+                # Get the device's current state
+                device_state = self.device_state[device_id]
                 
                 # Check how long it's been since the last update
-                time_now = time.time()
-                time_diff = time_now - cached_pos.get('timestamp', 0)
+                time_diff = now - device_state.get('last_pub_time', 0)
                 
                 # Calculate distance from last position
                 distance = self._calculate_distance(
-                    cached_pos.get('lat', 0), 
-                    cached_pos.get('lon', 0),
+                    device_state.get('lat', 0), 
+                    device_state.get('lon', 0),
                     latitude,
                     longitude
                 )
                 
-                # Enhanced throttling logic based on dynamic pet activity level
-                # Determine pet's current activity level based on speed
-                activity_level = "resting"
-                if speed > 20:  # km/h
-                    activity_level = "fast_moving"
-                elif speed > 5:  # km/h
-                    activity_level = "walking"
-                
-                # Set dynamic throttling threshold based on activity
-                required_distance = self.min_position_delta  # Default threshold (10m)
-                required_time = self.throttle_timeout  # Default timeout (60s)
-                
-                # Adjust thresholds based on activity level
-                if activity_level == "fast_moving":
-                    # For fast moving pets, lower the distance threshold but keep time longer
-                    required_distance = self.min_position_delta * 0.5  # 5m when fast
-                    required_time = 5  # 5 seconds
-                elif activity_level == "walking":
-                    # Standard threshold for walking pets
-                    required_distance = self.min_position_delta  # 10m
-                    required_time = 60  # 60 seconds
-                else:  # resting
-                    # Higher threshold and longer timeout for resting pets
-                    required_distance = self.min_position_delta * 1.5  # 15m when resting
-                    required_time = 300  # 5 minutes
-                
-                # Apply the dynamic throttling
-                if (distance < required_distance and time_diff < required_time):
+                # Apply dual-gating logic:
+                # Only publish if EITHER time threshold OR distance threshold is met
+                if time_diff < min_interval and distance < min_distance:
                     logger.info(f"Throttling position for {device_id} ({activity_level}): moved only {distance:.2f}m " 
-                                f"in {time_diff:.1f}s (threshold: {required_distance:.1f}m, {required_time}s)")
+                                f"in {time_diff:.1f}s (thresholds: {min_distance:.1f}m, {min_interval}s)")
                     should_publish = False
                 else:
-                    trigger = "distance" if distance >= required_distance else "timeout"
+                    trigger = "distance" if distance >= min_distance else "timeout"
                     logger.info(f"Publishing position for {device_id} ({activity_level}) due to {trigger}: "
-                                f"{distance:.2f}m moved, {time_diff:.1f}s passed (threshold: {required_distance:.1f}m, {required_time}s)")
+                                f"{distance:.2f}m moved, {time_diff:.1f}s passed (thresholds: {min_distance:.1f}m, {min_interval}s)")
             
-            # Update the position cache regardless of whether we publish
+            # Always update the device state with latest coordinates
+            self.device_state[device_id].update({
+                'lat': latitude,
+                'lon': longitude,
+                'activity': activity_level
+            })
+            
+            # Only update last_pub_time if we're actually publishing
+            if should_publish:
+                self.device_state[device_id]['last_pub_time'] = now
+            
+            # For backward compatibility - will be deprecated in future
             self.position_cache[device_id] = {
                 'lat': latitude,
                 'lon': longitude,
-                'timestamp': time.time()
+                'timestamp': now
             }
             
             # Only proceed with publishing if we should
@@ -894,35 +922,9 @@ class JT808Server:
                     "additional": additional_info
                 }
             
+            # Publish using the configured topic (with device ID)
+            # Unified topic strategy: only use a single topic per device
             self._publish_mqtt(topic, payload)
-            
-            # Also publish to a special topic for real-time tracking with optimized payload
-            tracking_topic = f"pettracker/tracking"
-            
-            if self.optimize_payload:
-                # Highly optimized payload for real-time tracking
-                # This is especially important for the tracking topic that all clients subscribe to
-                tracking_payload = {
-                    "d": device_id,  # device ID
-                    "t": iso_timestamp,  # timestamp
-                    "lat": round(latitude, 6),  # latitude with 6 decimal precision (meter-level accuracy)
-                    "lon": round(longitude, 6),  # longitude with 6 decimal precision
-                    "s": round(speed / 10.0, 1) if speed > 0 else 0  # speed in km/h, 1 decimal
-                }
-                # Only include direction if non-zero (saves bandwidth)
-                if direction != 0:
-                    tracking_payload["dir"] = direction
-            else:
-                # Original full payload format
-                tracking_payload = {
-                    "device_id": device_id,
-                    "timestamp": iso_timestamp,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "speed": speed / 10.0,
-                    "direction": direction
-                }
-            self._publish_mqtt(tracking_topic, tracking_payload)
             
             # Update status
             self._publish_status(device_id, "online")
