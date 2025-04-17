@@ -17,6 +17,7 @@ try:
     import struct
     import traceback
     import random
+    import math
     import paho.mqtt.client as mqtt
     import ssl
     from datetime import datetime
@@ -649,6 +650,43 @@ class JT808Server:
                 latitude = -latitude
             if status & StatusBit.LON_WEST:
                 longitude = -longitude
+            
+            # Check if we should throttle this position update
+            should_publish = True
+            if self.throttle_duplicates and device_id in self.position_cache:
+                cached_pos = self.position_cache[device_id]
+                
+                # Check how long it's been since the last update
+                time_now = time.time()
+                time_diff = time_now - cached_pos.get('timestamp', 0)
+                
+                # Calculate distance from last position
+                distance = self._calculate_distance(
+                    cached_pos.get('lat', 0), 
+                    cached_pos.get('lon', 0),
+                    latitude,
+                    longitude
+                )
+                
+                # Only publish if we've moved far enough or it's been long enough
+                if (distance < self.min_position_delta and 
+                    time_diff < self.throttle_timeout):
+                    logger.info(f"Throttling position for {device_id}: moved only {distance:.2f}m in {time_diff:.1f}s")
+                    should_publish = False
+                else:
+                    reason = "distance" if distance >= self.min_position_delta else "timeout"
+                    logger.info(f"Publishing position for {device_id} due to {reason}: {distance:.2f}m moved, {time_diff:.1f}s passed")
+            
+            # Update the position cache regardless of whether we publish
+            self.position_cache[device_id] = {
+                'lat': latitude,
+                'lon': longitude,
+                'timestamp': time.time()
+            }
+            
+            # Only proceed with publishing if we should
+            if not should_publish:
+                return
                 
             # Parse additional information
             additional_info = {}
@@ -693,12 +731,16 @@ class JT808Server:
                 if not flag_name.startswith('_'):
                     alarm_flags[flag_name.lower()] = bool(alarm_flag & flag_value)
             
+            # Format timestamp
+            iso_timestamp = f"20{timestamp[0:2]}-{timestamp[2:4]}-{timestamp[4:6]}T{timestamp[6:8]}:{timestamp[8:10]}:{timestamp[10:12]}Z"
+            
+            # Use the configured MQTT location topic (with device_id replacement)
+            topic = self.mqtt_location_topic.replace('{device_id}', device_id)
+            
             # Construct MQTT payload
-            topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/location"
             payload = {
                 "device_id": device_id,
-                "timestamp": f"20{timestamp[0:2]}-{timestamp[2:4]}-{timestamp[4:6]}T{timestamp[6:8]}:{timestamp[8:10]}:{timestamp[10:12]}Z",
-                "event": "location",
+                "timestamp": iso_timestamp,
                 "location": {
                     "latitude": latitude,
                     "longitude": longitude,
@@ -714,10 +756,10 @@ class JT808Server:
             self._publish_mqtt(topic, payload)
             
             # Also publish to a special topic for real-time tracking
-            tracking_topic = f"{self.mqtt_config['topic_prefix']}/tracking"
+            tracking_topic = f"pettracker/tracking"
             tracking_payload = {
                 "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": iso_timestamp,
                 "latitude": latitude,
                 "longitude": longitude,
                 "speed": speed / 10.0,
@@ -727,8 +769,34 @@ class JT808Server:
             
             # Update status
             self._publish_status(device_id, "online")
+            
+            logger.info(f"Published location from {device_id}: {latitude}, {longitude}")
         except Exception as e:
             logger.error(f"Failed to parse location message from {device_id}: {e}")
+            logger.error(traceback.format_exc())
+            
+    def _calculate_distance(self, lat1, lon1, lat2, lon2):
+        """
+        Calculate distance between two points in meters
+        Using Haversine formula
+        """
+        # Earth radius in meters
+        R = 6371000.0
+        
+        # Convert coordinates from degrees to radians
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+        
+        # Haversine formula
+        dlon = lon2_rad - lon1_rad
+        dlat = lat2_rad - lat1_rad
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        distance = R * c
+        
+        return distance
             
     def _publish_batch_location(self, device_id, message):
         """
@@ -802,11 +870,10 @@ class JT808Server:
                 pos += 28
                 
             # Publish batch of locations
-            topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/batch_location"
+            topic = self.mqtt_location_topic.replace('{device_id}', device_id) + "/batch"
             payload = {
                 "device_id": device_id,
                 "timestamp": datetime.now().isoformat(),
-                "event": "batch_location",
                 "type": type_id,
                 "count": len(locations),
                 "locations": locations
@@ -824,7 +891,7 @@ class JT808Server:
         Args:
             device_id: Device ID
         """
-        topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/logout"
+        topic = f"pettracker/{device_id}/system"
         payload = {
             "device_id": device_id,
             "timestamp": datetime.now().isoformat(),
@@ -842,7 +909,7 @@ class JT808Server:
             device_id: Device ID
             status: Status string ('online' or 'offline')
         """
-        topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/status"
+        topic = f"pettracker/{device_id}/status"
         payload = {
             "device_id": device_id,
             "timestamp": datetime.now().isoformat(),
@@ -1146,8 +1213,12 @@ def main():
         
     # MQTT configuration for the JT808 server
     mqtt_config = {
-        'topic_prefix': config.get('mqtt_topic_prefix', 'jt808'),
-        'mqtt_connected': mqtt_connected
+        'topic_prefix': config.get('mqtt_topic_prefix', 'pettracker'),
+        'mqtt_connected': mqtt_connected,
+        'throttle_duplicates': config.get('throttle_duplicates', True),
+        'throttle_timeout': config.get('throttle_timeout', 60),  # Seconds
+        'min_position_delta': config.get('min_position_delta', 5.0),  # Meters
+        'mqtt_location_topic': config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
     }
     
     # Create and start the JT808 server
