@@ -107,6 +107,7 @@ class JT808Server:
         self.status_cache = {}  # {device_id: {'status': status, 'timestamp': timestamp}}
         self.auth_cache = {}    # {device_id: {'auth_code': auth_code, 'timestamp': timestamp}}
         self.heartbeat_cache = {}  # {device_id: {'timestamp': timestamp}}
+        self.registration_cache = {}  # {device_id: {'registered': True, 'timestamp': timestamp}}
         
         # Throttling settings
         self.throttle_duplicates = mqtt_config.get('throttle_duplicates', True)
