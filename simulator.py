@@ -371,16 +371,27 @@ class GPSTrackingSimulator:
                         location_interval = new_interval
                         self.min_position_delta = new_min_distance
                     
-                    # Check if it's time to force a location update regardless of movement
+                    # Implement strict dual-gating: BOTH time AND distance must be satisfied
                     time_now = time.time()
-                    if time_now >= next_forced_update:
-                        logger.info(f"Forcing location update due to interval timeout ({location_interval}s, activity: {current_activity})")
-                        self.should_send_location = True
-                        # Reset for next interval
+                    time_threshold_met = time_now >= next_forced_update
+                    distance_threshold_met = self.should_send_location  # This is set to True in _update_location when distance threshold is met
+                    
+                    # Check if we should send based on both thresholds
+                    should_send = time_threshold_met and distance_threshold_met
+                    
+                    # Log detailed threshold status
+                    if time_threshold_met and not distance_threshold_met:
+                        logger.info(f"Time threshold met ({location_interval}s elapsed), but distance threshold ({self.min_position_delta}m) not met yet. Waiting for more movement.")
+                    elif distance_threshold_met and not time_threshold_met:
+                        time_remaining = next_forced_update - time_now
+                        logger.info(f"Distance threshold ({self.min_position_delta}m) met, but time threshold not met yet. Waiting {time_remaining:.1f}s more.")
+                    elif time_threshold_met and distance_threshold_met:
+                        logger.info(f"Both time ({location_interval}s) and distance ({self.min_position_delta}m) thresholds met. Sending location update.")
+                        # Reset time counter for next interval when both thresholds are met
                         next_forced_update = time_now + location_interval
-                        
-                    # Only send if we've moved enough or it's time for a forced update    
-                    if self.should_send_location:
+                    
+                    # Only send if BOTH thresholds (time and distance) are met
+                    if should_send:
                         # Determine which additional info to include based on optimization settings
                         additional_info = {}
                         
@@ -452,6 +463,7 @@ class GPSTrackingSimulator:
                                 'lon': self.longitude,
                                 'timestamp': time.time()
                             }
+                            # Reset the distance threshold flag - will only be set to True again when sufficient movement occurs
                             self.should_send_location = False
                     else:
                         logger.debug(f"Skipping location update - position delta below threshold")

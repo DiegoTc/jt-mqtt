@@ -786,16 +786,22 @@ class JT808Server:
                     longitude
                 )
                 
-                # Apply dual-gating logic:
-                # Only publish if EITHER time threshold OR distance threshold is met
-                if time_diff < min_interval and distance < min_distance:
-                    logger.info(f"Throttling position for {device_id} ({activity_level}): moved only {distance:.2f}m " 
-                                f"in {time_diff:.1f}s (thresholds: {min_distance:.1f}m, {min_interval}s)")
-                    should_publish = False
+                # Apply strict dual-gating logic:
+                # Only publish if BOTH time threshold AND distance threshold are met
+                if time_diff >= min_interval and distance >= min_distance:
+                    logger.info(f"Publishing position for {device_id} ({activity_level}): moved {distance:.2f}m " 
+                                f"in {time_diff:.1f}s, BOTH thresholds met (min: {min_distance:.1f}m, {min_interval}s)")
+                    should_publish = True
                 else:
-                    trigger = "distance" if distance >= min_distance else "timeout"
-                    logger.info(f"Publishing position for {device_id} ({activity_level}) due to {trigger}: "
-                                f"{distance:.2f}m moved, {time_diff:.1f}s passed (thresholds: {min_distance:.1f}m, {min_interval}s)")
+                    # Determine which threshold was not met for detailed logging
+                    missing_threshold = []
+                    if time_diff < min_interval:
+                        missing_threshold.append(f"time ({time_diff:.1f}s < {min_interval}s)")
+                    if distance < min_distance:
+                        missing_threshold.append(f"distance ({distance:.2f}m < {min_distance:.1f}m)")
+                    
+                    logger.info(f"Throttling position for {device_id} ({activity_level}): {', '.join(missing_threshold)} " 
+                                f"threshold(s) not met")
             
             # Always update the device state with latest coordinates
             self.device_state[device_id].update({
