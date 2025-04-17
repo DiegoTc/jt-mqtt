@@ -700,11 +700,16 @@ class JT808Server:
                 logger.error(f"Invalid location message format from {device_id}")
                 return
                 
-            # Extract basic location information
-            alarm_flag, status, lat_value, lon_value, altitude, speed, direction = struct.unpack('>IIIIHHB', message.body[:19])
+            # Check if message has enough data for the basic location information
+            if len(message.body) < 22:
+                logger.error(f"Location message too short from {device_id}: {len(message.body)} bytes, expected at least 22 bytes")
+                return
+                
+            # Extract basic location information (4 DWORDs + 3 WORDs = 22 bytes)
+            alarm_flag, status, lat_value, lon_value, altitude, speed, direction = struct.unpack('>IIIIHHH', message.body[:22])
             
             # Extract timestamp
-            timestamp_bytes = message.body[19:25]
+            timestamp_bytes = message.body[22:28]
             timestamp = bytes_to_bcd(timestamp_bytes)
             
             # Convert coordinates to decimal degrees
@@ -899,13 +904,13 @@ class JT808Server:
                 if pos + 28 > len(message.body):
                     break
                     
-                # Extract basic location information
+                # Extract basic location information (4 DWORDs + 3 WORDs = 22 bytes)
                 alarm_flag, status, lat_value, lon_value, altitude, speed, direction = struct.unpack(
-                    '>IIIIHHB', message.body[pos:pos+19]
+                    '>IIIIHHH', message.body[pos:pos+22]
                 )
                 
                 # Extract timestamp
-                timestamp_bytes = message.body[pos+19:pos+25]
+                timestamp_bytes = message.body[pos+22:pos+28]
                 timestamp = bytes_to_bcd(timestamp_bytes)
                 
                 # Convert coordinates to decimal degrees
