@@ -957,14 +957,34 @@ class JT808Server:
             device_id: Device ID
             status: Status string ('online' or 'offline')
         """
-        topic = f"pettracker/{device_id}/status"
-        payload = {
-            "device_id": device_id,
-            "timestamp": datetime.now().isoformat(),
-            "status": status
+        # Apply debouncing to status events - only publish on actual changes
+        current_time = time.time()
+        should_publish = True
+        
+        if device_id in self.status_cache:
+            cached_status = self.status_cache[device_id]
+            
+            # Only publish if the status has changed
+            if cached_status.get('status') == status:
+                logger.debug(f"Status hasn't changed for {device_id} ({status}), not publishing")
+                should_publish = False
+        
+        # Update status cache regardless of whether we publish
+        self.status_cache[device_id] = {
+            'status': status,
+            'timestamp': current_time
         }
         
-        self._publish_mqtt(topic, payload)
+        if should_publish:
+            topic = f"pettracker/{device_id}/status"
+            payload = {
+                "device_id": device_id,
+                "timestamp": datetime.now().isoformat(),
+                "status": status
+            }
+            
+            logger.debug(f"Publishing status change for {device_id}: {status}")
+            self._publish_mqtt(topic, payload)
         
     def _publish_mqtt(self, topic, payload):
         """
