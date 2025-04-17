@@ -29,5 +29,8 @@
     "speed_threshold_fast": 20,
     "speed_threshold_walking": 5,
     "optimize_payload": true,
-    "registration_ttl": 3600
+    "registration_ttl": 3600,
+    "fast_distance": 5.0,
+    "walking_distance": 10.0,
+    "resting_distance": 15.0
 }

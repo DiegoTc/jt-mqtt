@@ -345,26 +345,31 @@ class GPSTrackingSimulator:
                     # Dynamically adjust location_interval based on pet activity (speed)
                     current_speed = self.speed  # Current speed in km/h
                     
-                    # Determine appropriate interval based on activity level
+                    # Also adjust distance thresholds based on activity level
                     if current_speed > speed_threshold_fast:
                         # Fast moving pet
                         new_interval = interval_fast
-                        new_activity = "fast moving"
+                        new_activity = "fast_moving"  # Match converter.py activity name
+                        new_min_distance = float(self.config.get('fast_distance', 5.0))  # 5m threshold when fast moving
                     elif current_speed > speed_threshold_walking:
                         # Walking pet
                         new_interval = interval_walking
                         new_activity = "walking"
+                        new_min_distance = float(self.config.get('walking_distance', 10.0))  # 10m threshold when walking
                     else:
                         # Resting pet
                         new_interval = interval_resting
                         new_activity = "resting"
+                        new_min_distance = float(self.config.get('resting_distance', 15.0))  # 15m threshold when resting
                     
                     # Log if activity state changed
                     if new_activity != current_activity:
                         logger.info(f"Pet activity changed: {current_activity} -> {new_activity} (speed: {current_speed:.1f} km/h)")
                         logger.info(f"Adjusting reporting interval: {location_interval}s -> {new_interval}s")
+                        logger.info(f"Adjusting distance threshold: {self.min_position_delta}m -> {new_min_distance}m")
                         current_activity = new_activity
                         location_interval = new_interval
+                        self.min_position_delta = new_min_distance
                     
                     # Check if it's time to force a location update regardless of movement
                     time_now = time.time()
@@ -482,7 +487,7 @@ class GPSTrackingSimulator:
             self.batch_locations = []
             
     def _update_location(self):
-        """Update location coordinates to simulate movement"""
+        """Update location coordinates to simulate movement with activity-based thresholds"""
         # Convert direction from degrees to radians
         direction_rad = math.radians(self.direction)
         
@@ -512,12 +517,30 @@ class GPSTrackingSimulator:
         # Calculate distance from last step (for logging)
         distance_moved = self._calculate_distance(old_lat, old_lon, self.latitude, self.longitude)
         
-        # Check if we've moved far enough from last sent position to send a location update
-        if distance_from_last_sent >= self.min_position_delta:
-            logger.info(f"Moved {distance_from_last_sent:.2f}m from last sent position, exceeding minimum delta of {self.min_position_delta}m")
+        # Determine activity level based on current speed
+        speed_threshold_fast = float(self.config.get('speed_threshold_fast', 20))  # km/h
+        speed_threshold_walking = float(self.config.get('speed_threshold_walking', 5))  # km/h
+        
+        # Set activity level and the corresponding distance threshold
+        if self.speed > speed_threshold_fast:
+            # Fast moving pet
+            activity_level = "fast_moving"
+            min_distance_threshold = float(self.config.get('fast_distance', 5.0))  # 5 meters
+        elif self.speed > speed_threshold_walking:
+            # Walking pet
+            activity_level = "walking"
+            min_distance_threshold = float(self.config.get('walking_distance', 10.0))  # 10 meters
+        else:
+            # Resting pet
+            activity_level = "resting"
+            min_distance_threshold = float(self.config.get('resting_distance', 15.0))  # 15 meters
+        
+        # Apply activity-based distance threshold for sending updates
+        if distance_from_last_sent >= min_distance_threshold:
+            logger.info(f"Moved {distance_from_last_sent:.2f}m from last sent position, exceeding {activity_level} threshold of {min_distance_threshold:.1f}m")
             self.should_send_location = True
         else:
-            logger.info(f"Step moved: {distance_moved:.2f}m, total from last sent: {distance_from_last_sent:.2f}m (below minimum delta of {self.min_position_delta}m)")
+            logger.info(f"[{activity_level}] Step moved: {distance_moved:.2f}m, total from last sent: {distance_from_last_sent:.2f}m (below threshold of {min_distance_threshold:.1f}m)")
             
     def _calculate_distance(self, lat1, lon1, lat2, lon2):
         """
