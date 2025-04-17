@@ -103,10 +103,16 @@ class JT808Server:
         # Cache for position throttling
         self.position_cache = {}  # {device_id: {'lat': lat, 'lon': lon, 'timestamp': timestamp}}
         
+        # Event state tracking for debouncing
+        self.status_cache = {}  # {device_id: {'status': status, 'timestamp': timestamp}}
+        self.auth_cache = {}    # {device_id: {'auth_code': auth_code, 'timestamp': timestamp}}
+        self.heartbeat_cache = {}  # {device_id: {'timestamp': timestamp}}
+        
         # Throttling settings
         self.throttle_duplicates = mqtt_config.get('throttle_duplicates', True)
         self.throttle_timeout = mqtt_config.get('throttle_timeout', 60)  # Seconds
         self.min_position_delta = mqtt_config.get('min_position_delta', 5.0)  # Meters
+        self.heartbeat_interval = mqtt_config.get('heartbeat_interval', 60)  # Seconds between heartbeats
         
         # MQTT topic configuration
         self.mqtt_location_topic = mqtt_config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
@@ -510,14 +516,36 @@ class JT808Server:
         Args:
             device_id: Device ID
         """
-        topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/heartbeat"
-        payload = {
-            "device_id": device_id,
-            "timestamp": datetime.now().isoformat(),
-            "event": "heartbeat"
+        # Apply throttling to heartbeat events
+        current_time = time.time()
+        should_publish = True
+        
+        if device_id in self.heartbeat_cache:
+            last_heartbeat_time = self.heartbeat_cache[device_id].get('timestamp', 0)
+            time_diff = current_time - last_heartbeat_time
+            
+            # Only publish if enough time has passed since the last heartbeat
+            if time_diff < self.heartbeat_interval:
+                logger.debug(f"Throttling heartbeat for {device_id}, last sent {time_diff:.1f}s ago")
+                should_publish = False
+        
+        # Update the heartbeat cache regardless of whether we publish
+        self.heartbeat_cache[device_id] = {
+            'timestamp': current_time
         }
         
-        self._publish_mqtt(topic, payload)
+        if should_publish:
+            topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/heartbeat"
+            payload = {
+                "device_id": device_id,
+                "timestamp": datetime.now().isoformat(),
+                "event": "heartbeat"
+            }
+            
+            logger.debug(f"Publishing heartbeat for {device_id}")
+            self._publish_mqtt(topic, payload)
+            
+        # Always call publish_status, which has its own debouncing logic
         self._publish_status(device_id, "online")
         
     def _publish_registration(self, device_id, message):
@@ -607,15 +635,35 @@ class JT808Server:
                 except Exception:
                     auth_code = ''.join([f'{b:02x}' for b in message.body[1:1+auth_len]]).upper()
             
-            topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/authentication"
-            payload = {
-                "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
-                "event": "authentication",
-                "auth_code": auth_code
+            # Check if we've already sent this authentication code
+            should_publish = True
+            if device_id in self.auth_cache:
+                cached_auth = self.auth_cache[device_id]
+                
+                # Only publish if the auth_code has changed
+                if cached_auth.get('auth_code') == auth_code:
+                    logger.debug(f"Auth code hasn't changed for {device_id}, not publishing")
+                    should_publish = False
+            
+            # Update auth cache regardless of whether we publish
+            self.auth_cache[device_id] = {
+                'auth_code': auth_code,
+                'timestamp': time.time()
             }
             
-            self._publish_mqtt(topic, payload)
+            if should_publish:
+                topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/authentication"
+                payload = {
+                    "device_id": device_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "event": "authentication",
+                    "auth_code": auth_code
+                }
+                
+                logger.debug(f"Publishing authentication for {device_id}")
+                self._publish_mqtt(topic, payload)
+            
+            # Always call publish_status, which has its own debouncing logic
             self._publish_status(device_id, "online")
         except Exception as e:
             logger.error(f"Failed to parse authentication message from {device_id}: {e}")
