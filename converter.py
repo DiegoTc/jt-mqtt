@@ -109,11 +109,16 @@ class JT808Server:
         self.heartbeat_cache = {}  # {device_id: {'timestamp': timestamp}}
         self.registration_cache = {}  # {device_id: {'registered': True, 'timestamp': timestamp}}
         
-        # Throttling settings
+        # Enhanced throttling settings for bandwidth and battery optimization
         self.throttle_duplicates = mqtt_config.get('throttle_duplicates', True)
         self.throttle_timeout = mqtt_config.get('throttle_timeout', 60)  # Seconds
-        self.min_position_delta = mqtt_config.get('min_position_delta', 5.0)  # Meters
+        self.min_position_delta = mqtt_config.get('min_position_delta', 10.0)  # Meters (increased to 10m)
         self.heartbeat_interval = mqtt_config.get('heartbeat_interval', 60)  # Seconds between heartbeats
+        
+        # Additional optimization settings
+        self.registration_ttl = mqtt_config.get('registration_ttl', 3600)  # Only re-register once per hour
+        self.status_ttl = mqtt_config.get('status_ttl', 300)  # Only publish status changes every 5 minutes
+        self.optimize_payload = mqtt_config.get('optimize_payload', True)  # Strip unused fields
         
         # MQTT topic configuration
         self.mqtt_location_topic = mqtt_config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
@@ -739,14 +744,41 @@ class JT808Server:
                     longitude
                 )
                 
-                # Only publish if we've moved far enough or it's been long enough
-                if (distance < self.min_position_delta and 
-                    time_diff < self.throttle_timeout):
-                    logger.info(f"Throttling position for {device_id}: moved only {distance:.2f}m in {time_diff:.1f}s")
+                # Enhanced throttling logic based on dynamic pet activity level
+                # Determine pet's current activity level based on speed
+                activity_level = "resting"
+                if speed > 20:  # km/h
+                    activity_level = "fast_moving"
+                elif speed > 5:  # km/h
+                    activity_level = "walking"
+                
+                # Set dynamic throttling threshold based on activity
+                required_distance = self.min_position_delta  # Default threshold (10m)
+                required_time = self.throttle_timeout  # Default timeout (60s)
+                
+                # Adjust thresholds based on activity level
+                if activity_level == "fast_moving":
+                    # For fast moving pets, lower the distance threshold but keep time longer
+                    required_distance = self.min_position_delta * 0.5  # 5m when fast
+                    required_time = 5  # 5 seconds
+                elif activity_level == "walking":
+                    # Standard threshold for walking pets
+                    required_distance = self.min_position_delta  # 10m
+                    required_time = 60  # 60 seconds
+                else:  # resting
+                    # Higher threshold and longer timeout for resting pets
+                    required_distance = self.min_position_delta * 1.5  # 15m when resting
+                    required_time = 300  # 5 minutes
+                
+                # Apply the dynamic throttling
+                if (distance < required_distance and time_diff < required_time):
+                    logger.info(f"Throttling position for {device_id} ({activity_level}): moved only {distance:.2f}m " 
+                                f"in {time_diff:.1f}s (threshold: {required_distance:.1f}m, {required_time}s)")
                     should_publish = False
                 else:
-                    reason = "distance" if distance >= self.min_position_delta else "timeout"
-                    logger.info(f"Publishing position for {device_id} due to {reason}: {distance:.2f}m moved, {time_diff:.1f}s passed")
+                    trigger = "distance" if distance >= required_distance else "timeout"
+                    logger.info(f"Publishing position for {device_id} ({activity_level}) due to {trigger}: "
+                                f"{distance:.2f}m moved, {time_diff:.1f}s passed (threshold: {required_distance:.1f}m, {required_time}s)")
             
             # Update the position cache regardless of whether we publish
             self.position_cache[device_id] = {
@@ -808,21 +840,59 @@ class JT808Server:
             # Use the configured MQTT location topic (with device_id replacement)
             topic = self.mqtt_location_topic.replace('{device_id}', device_id)
             
-            # Construct MQTT payload
-            payload = {
-                "device_id": device_id,
-                "timestamp": iso_timestamp,
-                "location": {
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "altitude": altitude,
-                    "speed": speed / 10.0,  # km/h
-                    "direction": direction
-                },
-                "status": status_flags,
-                "alarm": alarm_flags,
-                "additional": additional_info
-            }
+            # Construct MQTT payload with size optimization if configured
+            if self.optimize_payload:
+                # Minimal payload with only essential fields
+                payload = {
+                    "d": device_id,  # Shortened key name
+                    "t": iso_timestamp,  # Shortened key name
+                    "loc": {  # Shortened key name
+                        "lat": round(latitude, 6),  # Shortened key name + precision limit
+                        "lon": round(longitude, 6),  # Shortened key name + precision limit
+                        # Only include other fields if they have meaningful values
+                        "alt": altitude if altitude > 0 else None,
+                        "spd": round(speed / 10.0, 1) if speed > 0 else None,  # Shortened key + fewer decimals
+                        "dir": direction if direction != 0 else None
+                    }
+                }
+                
+                # Only include status flags that are true (saves bandwidth)
+                active_status = {k: v for k, v in status_flags.items() if v}
+                if active_status:
+                    payload["st"] = active_status  # Shortened key name
+                
+                # Only include alarm flags that are true
+                active_alarms = {k: v for k, v in alarm_flags.items() if v}
+                if active_alarms:
+                    payload["alm"] = active_alarms  # Shortened key name
+                
+                # Only include essential additional info (mileage and low battery)
+                essential_info = {}
+                if "mileage" in additional_info:
+                    essential_info["m"] = round(additional_info["mileage"], 1)  # Shortened key + fewer decimals
+                
+                if "fuel" in additional_info and additional_info["fuel"] < 30:
+                    # Only include battery/fuel if it's low (below 30%)
+                    essential_info["b"] = round(additional_info["fuel"], 0)  # Shortened key + integer only
+                
+                if essential_info:
+                    payload["add"] = essential_info  # Shortened key name
+            else:
+                # Full payload with all fields (original format)
+                payload = {
+                    "device_id": device_id,
+                    "timestamp": iso_timestamp,
+                    "location": {
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "altitude": altitude,
+                        "speed": speed / 10.0,  # km/h
+                        "direction": direction
+                    },
+                    "status": status_flags,
+                    "alarm": alarm_flags,
+                    "additional": additional_info
+                }
             
             self._publish_mqtt(topic, payload)
             
@@ -974,23 +1044,42 @@ class JT808Server:
         
     def _publish_status(self, device_id, status):
         """
-        Publish device status to MQTT
+        Publish device status to MQTT with advanced throttling
         
         Args:
             device_id: Device ID
             status: Status string ('online' or 'offline')
         """
-        # Apply debouncing to status events - only publish on actual changes
+        # Apply enhanced throttling to status events 
         current_time = time.time()
         should_publish = True
         
         if device_id in self.status_cache:
             cached_status = self.status_cache[device_id]
+            cached_time = cached_status.get('timestamp', 0)
+            cached_status_value = cached_status.get('status')
+            time_since_last = current_time - cached_time
             
-            # Only publish if the status has changed
-            if cached_status.get('status') == status:
-                logger.debug(f"Status hasn't changed for {device_id} ({status}), not publishing")
-                should_publish = False
+            # First check: Only publish if the status has changed
+            if cached_status_value == status:
+                # No change in status, apply TTL-based throttling
+                # For 'online' status, enforce minimum interval between messages
+                if status == 'online' and time_since_last < self.status_ttl:
+                    logger.debug(f"Status '{status}' for {device_id} reported too frequently "
+                                f"(last report {time_since_last:.1f}s ago, TTL: {self.status_ttl}s), throttling")
+                    should_publish = False
+                else:
+                    logger.debug(f"Status hasn't changed for {device_id} ({status}), not publishing")
+                    should_publish = False
+            else:
+                # Status has changed - prioritize 'offline' notifications
+                # Always publish offline status immediately
+                if status == 'offline':
+                    logger.info(f"Device {device_id} status changed from {cached_status_value} to {status} - publishing immediately")
+                # For online status after offline, add small delay to prevent flickering
+                elif status == 'online' and cached_status_value == 'offline' and time_since_last < 5:  
+                    logger.debug(f"Device {device_id} came back online too quickly after being offline, suppressing status change")
+                    should_publish = False
         
         # Update status cache regardless of whether we publish
         self.status_cache[device_id] = {
