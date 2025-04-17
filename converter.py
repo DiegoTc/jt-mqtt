@@ -595,21 +595,38 @@ class JT808Server:
                     except Exception:
                         license_plate = ''.join([f'{b:02x}' for b in message.body[38:38+license_len]]).upper()
             
-            topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/registration"
-            payload = {
-                "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
-                "event": "registration",
-                "province_id": province_id,
-                "city_id": city_id,
-                "manufacturer_id": manufacturer_id,
-                "terminal_model": terminal_model,
-                "terminal_id": terminal_id,
-                "license_plate_color": license_plate_color,
-                "license_plate": license_plate
+            # Implement debouncing for registrations - only publish once per device per session
+            should_publish = True
+            if device_id in self.registration_cache:
+                # We've seen this device register before in this session
+                logger.debug(f"Device {device_id} has already registered in this session, not publishing duplicate registration")
+                should_publish = False
+            
+            # Update registration cache regardless of whether we publish
+            self.registration_cache[device_id] = {
+                'registered': True,
+                'timestamp': time.time()
             }
             
-            self._publish_mqtt(topic, payload)
+            if should_publish:
+                topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/registration"
+                payload = {
+                    "device_id": device_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "event": "registration",
+                    "province_id": province_id,
+                    "city_id": city_id,
+                    "manufacturer_id": manufacturer_id,
+                    "terminal_model": terminal_model,
+                    "terminal_id": terminal_id,
+                    "license_plate_color": license_plate_color,
+                    "license_plate": license_plate
+                }
+                
+                logger.debug(f"Publishing registration for {device_id}")
+                self._publish_mqtt(topic, payload)
+            
+            # Always call publish_status, which has its own debouncing logic
             self._publish_status(device_id, "online")
         except Exception as e:
             logger.error(f"Failed to parse registration message from {device_id}: {e}")
