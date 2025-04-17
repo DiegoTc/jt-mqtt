@@ -896,16 +896,32 @@ class JT808Server:
             
             self._publish_mqtt(topic, payload)
             
-            # Also publish to a special topic for real-time tracking
+            # Also publish to a special topic for real-time tracking with optimized payload
             tracking_topic = f"pettracker/tracking"
-            tracking_payload = {
-                "device_id": device_id,
-                "timestamp": iso_timestamp,
-                "latitude": latitude,
-                "longitude": longitude,
-                "speed": speed / 10.0,
-                "direction": direction
-            }
+            
+            if self.optimize_payload:
+                # Highly optimized payload for real-time tracking
+                # This is especially important for the tracking topic that all clients subscribe to
+                tracking_payload = {
+                    "d": device_id,  # device ID
+                    "t": iso_timestamp,  # timestamp
+                    "lat": round(latitude, 6),  # latitude with 6 decimal precision (meter-level accuracy)
+                    "lon": round(longitude, 6),  # longitude with 6 decimal precision
+                    "s": round(speed / 10.0, 1) if speed > 0 else 0  # speed in km/h, 1 decimal
+                }
+                # Only include direction if non-zero (saves bandwidth)
+                if direction != 0:
+                    tracking_payload["dir"] = direction
+            else:
+                # Original full payload format
+                tracking_payload = {
+                    "device_id": device_id,
+                    "timestamp": iso_timestamp,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "speed": speed / 10.0,
+                    "direction": direction
+                }
             self._publish_mqtt(tracking_topic, tracking_payload)
             
             # Update status
@@ -996,14 +1012,36 @@ class JT808Server:
                 # Get iso timestamp
                 iso_timestamp = f"20{timestamp[0:2]}-{timestamp[2:4]}-{timestamp[4:6]}T{timestamp[6:8]}:{timestamp[8:10]}:{timestamp[10:12]}Z"
                 
-                locations.append({
-                    "timestamp": iso_timestamp,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "altitude": altitude,
-                    "speed": speed / 10.0,  # km/h
-                    "direction": direction,
-                })
+                # Create location entry based on optimization setting
+                if self.optimize_payload:
+                    # Create optimized location entry with shortened field names
+                    location_entry = {
+                        "t": iso_timestamp,  # Shortened key name 
+                        "lat": round(latitude, 6),  # Shortened key name + precision limit
+                        "lon": round(longitude, 6),  # Shortened key name + precision limit
+                    }
+                    
+                    # Only include values if they're meaningful
+                    if altitude > 0:
+                        location_entry["alt"] = altitude
+                    
+                    if speed > 0:
+                        location_entry["s"] = round(speed / 10.0, 1)  # Shortened key name + fewer decimals
+                    
+                    if direction != 0:
+                        location_entry["dir"] = direction
+                else:
+                    # Original format with all fields
+                    location_entry = {
+                        "timestamp": iso_timestamp,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "altitude": altitude,
+                        "speed": speed / 10.0,  # km/h
+                        "direction": direction,
+                    }
+                
+                locations.append(location_entry)
                 
                 # Move to the next location data
                 # In a real implementation, you would need to determine the actual size
@@ -1012,13 +1050,29 @@ class JT808Server:
                 
             # Publish batch of locations
             topic = self.mqtt_location_topic.replace('{device_id}', device_id) + "/batch"
-            payload = {
-                "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
-                "type": type_id,
-                "count": len(locations),
-                "locations": locations
-            }
+            
+            # Create payload based on optimization setting
+            if self.optimize_payload and len(locations) > 0:
+                # Highly optimized batch payload
+                payload = {
+                    "d": device_id,  # Shortened key name
+                    "t": datetime.now().isoformat(),  # Shortened key name
+                    "n": len(locations),  # Shortened key name for count
+                    "locs": locations  # Shortened key name for locations
+                }
+                
+                # Only include type if it's not the default (1)
+                if type_id != 1:
+                    payload["type"] = type_id
+            else:
+                # Original format with full field names
+                payload = {
+                    "device_id": device_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "type": type_id,
+                    "count": len(locations),
+                    "locations": locations
+                }
             
             self._publish_mqtt(topic, payload)
             self._publish_status(device_id, "online")
@@ -1033,11 +1087,21 @@ class JT808Server:
             device_id: Device ID
         """
         topic = f"pettracker/{device_id}/system"
-        payload = {
-            "device_id": device_id,
-            "timestamp": datetime.now().isoformat(),
-            "event": "logout"
-        }
+        
+        if self.optimize_payload:
+            # Optimized logout payload
+            payload = {
+                "d": device_id,  # Shortened device_id
+                "t": datetime.now().isoformat(),  # Shortened timestamp
+                "e": "logout"  # Shortened event
+            }
+        else:
+            # Original format
+            payload = {
+                "device_id": device_id,
+                "timestamp": datetime.now().isoformat(),
+                "event": "logout"
+            }
         
         self._publish_mqtt(topic, payload)
         self._publish_status(device_id, "offline")
@@ -1089,11 +1153,21 @@ class JT808Server:
         
         if should_publish:
             topic = f"pettracker/{device_id}/status"
-            payload = {
-                "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
-                "status": status
-            }
+            
+            if self.optimize_payload:
+                # Optimized status payload
+                payload = {
+                    "d": device_id,  # Shortened key
+                    "t": datetime.now().isoformat(),  # Shortened key
+                    "s": status  # Shortened key
+                }
+            else:
+                # Original format
+                payload = {
+                    "device_id": device_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "status": status
+                }
             
             logger.debug(f"Publishing status change for {device_id}: {status}")
             self._publish_mqtt(topic, payload)
@@ -1134,8 +1208,13 @@ class JT808Server:
             
         try:
             # Make sure the device_id in the payload is a string
-            if isinstance(payload, dict) and 'device_id' in payload:
-                payload['device_id'] = str(payload['device_id'])
+            # Support both regular and optimized device_id fields
+            if isinstance(payload, dict):
+                if 'device_id' in payload:
+                    payload['device_id'] = str(payload['device_id'])
+                # Support optimized key ('d') for device_id
+                elif 'd' in payload:
+                    payload['d'] = str(payload['d'])
                 
             # Make sure the topic is a string
             topic = str(topic)
