@@ -18,9 +18,16 @@
     "heartbeat_interval": 60,
     "batch_enabled": false,
     "batch_size": 5,
-    "min_position_delta": 5.0,
+    "min_position_delta": 10.0,
     "mqtt_location_topic": "pettracker/{device_id}/location",
     "publish_binary_payload": true,
     "throttle_duplicates": true,
-    "throttle_timeout": 60
+    "throttle_timeout": 60,
+    "interval_fast": 5,
+    "interval_walking": 60,
+    "interval_resting": 300,
+    "speed_threshold_fast": 20,
+    "speed_threshold_walking": 5,
+    "optimize_payload": true,
+    "registration_ttl": 3600
 }

@@ -285,12 +285,23 @@ class GPSTrackingSimulator:
                 time.sleep(5)  # Short delay before retrying
                 
     def _location_loop(self):
-        """Send location reports periodically"""
-        # Get configuration parameters
-        location_interval = self.config.get('location_interval', 60)  # Default is now 60 seconds
-        self.min_position_delta = float(self.config.get('min_position_delta', 5.0))  # Minimum movement in meters
+        """Send location reports periodically with dynamic intervals based on pet activity"""
+        # Get configuration parameters for dynamic intervals
+        interval_fast = int(self.config.get('interval_fast', 5))  # 5 seconds when fast moving
+        interval_walking = int(self.config.get('interval_walking', 60))  # 60 seconds when walking
+        interval_resting = int(self.config.get('interval_resting', 300))  # 300 seconds when resting
+        speed_threshold_fast = float(self.config.get('speed_threshold_fast', 20))  # km/h
+        speed_threshold_walking = float(self.config.get('speed_threshold_walking', 5))  # km/h
         
-        logger.info(f"Starting location loop, interval: {location_interval}s, min_position_delta: {self.min_position_delta}m")
+        # Initial interval starts at walking speed
+        location_interval = interval_walking
+        self.min_position_delta = float(self.config.get('min_position_delta', 10.0))  # Minimum movement in meters (now 10m)
+        
+        logger.info(f"Starting location loop with dynamic intervals:")
+        logger.info(f"  - Fast moving: {interval_fast}s (speed > {speed_threshold_fast} km/h)")
+        logger.info(f"  - Walking: {interval_walking}s (speed > {speed_threshold_walking} km/h)")
+        logger.info(f"  - Resting: {interval_resting}s (speed <= {speed_threshold_walking} km/h)")
+        logger.info(f"  - Min position delta: {self.min_position_delta}m")
         
         # Import mqtt client if we'll be publishing directly
         mqtt_client = None
@@ -319,8 +330,9 @@ class GPSTrackingSimulator:
                 mqtt_client = None
         
         # Use a shorter check interval for more responsive movement detection
-        check_interval = min(max(location_interval / 4, 1), 15)  # Between 1-15 seconds
+        check_interval = min(max(interval_fast / 2, 1), 15)  # Between 1-15 seconds
         next_forced_update = time.time() + location_interval  # Time when we'll force an update
+        current_activity = "walking"  # Start with walking state
         
         while self.running:
             try:
@@ -329,22 +341,62 @@ class GPSTrackingSimulator:
                     if self.move:
                         # Update position and check if we should send based on movement
                         self._update_location()
+                        
+                    # Dynamically adjust location_interval based on pet activity (speed)
+                    current_speed = self.speed  # Current speed in km/h
+                    
+                    # Determine appropriate interval based on activity level
+                    if current_speed > speed_threshold_fast:
+                        # Fast moving pet
+                        new_interval = interval_fast
+                        new_activity = "fast moving"
+                    elif current_speed > speed_threshold_walking:
+                        # Walking pet
+                        new_interval = interval_walking
+                        new_activity = "walking"
+                    else:
+                        # Resting pet
+                        new_interval = interval_resting
+                        new_activity = "resting"
+                    
+                    # Log if activity state changed
+                    if new_activity != current_activity:
+                        logger.info(f"Pet activity changed: {current_activity} -> {new_activity} (speed: {current_speed:.1f} km/h)")
+                        logger.info(f"Adjusting reporting interval: {location_interval}s -> {new_interval}s")
+                        current_activity = new_activity
+                        location_interval = new_interval
                     
                     # Check if it's time to force a location update regardless of movement
                     time_now = time.time()
                     if time_now >= next_forced_update:
-                        logger.info(f"Forcing location update due to interval timeout ({location_interval}s)")
+                        logger.info(f"Forcing location update due to interval timeout ({location_interval}s, activity: {current_activity})")
                         self.should_send_location = True
                         # Reset for next interval
                         next_forced_update = time_now + location_interval
                         
                     # Only send if we've moved enough or it's time for a forced update    
                     if self.should_send_location:
-                        # Add additional information
-                        additional_info = {
-                            0x01: self.config.get('mileage', 0),  # Mileage in km
-                            0x02: self.config.get('fuel', 100),   # Fuel in percentage (0-100)
-                        }
+                        # Determine which additional info to include based on optimization settings
+                        additional_info = {}
+                        
+                        # Check if we should optimize payload size
+                        if self.config.get('optimize_payload', True):
+                            # When optimizing, only include essential additional data
+                            # For pets, mileage is probably the most important metric (distance traveled)
+                            additional_info = {
+                                0x01: self.config.get('mileage', 0),  # Mileage in km - essential for pets
+                            }
+                            
+                            # Add battery level only if it's below 30% (important to report)
+                            battery_level = self.config.get('battery_level', 100)
+                            if battery_level <= 30:
+                                additional_info[0x02] = battery_level
+                        else:
+                            # When not optimizing, include all additional information
+                            additional_info = {
+                                0x01: self.config.get('mileage', 0),  # Mileage in km
+                                0x02: self.config.get('fuel', 100),   # Fuel/battery in percentage (0-100)
+                            }
                         
                         # Check if we should use batch reporting
                         if self.batch_enabled:
