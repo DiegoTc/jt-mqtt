@@ -787,7 +787,7 @@ class JT808Server:
                 )
                 
                 # Apply strict dual-gating logic:
-                # Only publish if BOTH time threshold AND distance threshold are met
+                # Only publish if BOTH time threshold AND distance threshold are met simultaneously
                 if time_diff >= min_interval and distance >= min_distance:
                     logger.info(f"Publishing position for {device_id} ({activity_level}): moved {distance:.2f}m " 
                                 f"in {time_diff:.1f}s, BOTH thresholds met (min: {min_distance:.1f}m, {min_interval}s)")
