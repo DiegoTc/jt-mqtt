@@ -98,6 +98,17 @@ class JT808Server:
         self.mqtt_config = mqtt_config
         self.server_socket = None
         self.clients = {}  # {socket: {'addr': addr, 'buffer': bytearray(), 'device_id': None}}
+        
+        # Cache for position throttling
+        self.position_cache = {}  # {device_id: {'lat': lat, 'lon': lon, 'timestamp': timestamp}}
+        
+        # Throttling settings
+        self.throttle_duplicates = mqtt_config.get('throttle_duplicates', True)
+        self.throttle_timeout = mqtt_config.get('throttle_timeout', 60)  # Seconds
+        self.min_position_delta = mqtt_config.get('min_position_delta', 5.0)  # Meters
+        
+        # MQTT topic configuration
+        self.mqtt_location_topic = mqtt_config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
         self.running = False
         self.accept_thread = None
         

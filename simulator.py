@@ -62,10 +62,21 @@ class GPSTrackingSimulator:
         self.speed = int(config.get('speed', 0))
         self.direction = int(config.get('direction', 0))
         
+        # Previous location for filtering
+        self.prev_latitude = self.latitude
+        self.prev_longitude = self.longitude
+        
         # Move parameters
         self.move = config.get('move', True)
         self.move_distance = config.get('move_distance', 0.00005)  # Approx. 5 meters
-        self.move_interval = config.get('location_interval', 10)   # Seconds
+        self.move_interval = config.get('location_interval', 60)   # Changed to 60 seconds default
+        
+        # Position filtering parameters
+        self.min_position_delta = config.get('min_position_delta', 5.0)  # Minimum distance in meters to report
+        self.should_send_location = True  # Flag to track if we should send location update
+        
+        # MQTT direct publishing settings 
+        self.publish_binary_payload = config.get('publish_binary_payload', True)
         
         # Status and alarm flags
         self.status = config.get('status', StatusBit.ACC_ON | StatusBit.LOCATION_FIXED)
@@ -271,15 +282,42 @@ class GPSTrackingSimulator:
                 
     def _location_loop(self):
         """Send location reports periodically"""
-        location_interval = self.config.get('location_interval', 10)  # Seconds
+        location_interval = self.config.get('location_interval', 60)  # Default is now 60 seconds
         
         logger.info(f"Starting location loop, interval: {location_interval}s")
+        
+        # Import mqtt client if we'll be publishing directly
+        mqtt_client = None
+        if self.publish_binary_payload:
+            try:
+                import paho.mqtt.client as mqtt
+                # Create MQTT client for direct publishing
+                mqtt_client = mqtt.Client()
+                # Configure MQTT connection
+                mqtt_host = self.config.get('mqtt_host', 'localhost')
+                mqtt_port = self.config.get('mqtt_port', 1883)
+                mqtt_user = self.config.get('mqtt_user', '')
+                mqtt_password = self.config.get('mqtt_password', '')
+                
+                # Set credentials if provided
+                if mqtt_user and mqtt_password:
+                    mqtt_client.username_pw_set(mqtt_user, mqtt_password)
+                    
+                # Connect to broker
+                logger.info(f"Connecting to MQTT broker at {mqtt_host}:{mqtt_port}")
+                mqtt_client.connect(mqtt_host, mqtt_port)
+                mqtt_client.loop_start()
+                logger.info("Connected to MQTT broker for direct binary publishing")
+            except Exception as e:
+                logger.error(f"Failed to setup MQTT client for direct publishing: {e}")
+                mqtt_client = None
         
         while self.running:
             try:
                 if self.protocol.authenticated:
                     # Update location if movement is enabled
                     if self.move:
+                        # Update position and check if we should send based on movement
                         self._update_location()
                         
                     # Add additional information
@@ -292,30 +330,71 @@ class GPSTrackingSimulator:
                     if self.batch_enabled:
                         self._handle_batch_reporting(additional_info)
                     else:
-                        # Send normal location report
-                        logger.info(f"Sending location: {self.latitude}, {self.longitude}")
-                        # Ensure values are of correct types
-                        int_altitude = int(self.altitude)
-                        int_speed = int(self.speed)
-                        int_direction = int(self.direction)
-                        int_alarm = int(self.alarm)
-                        int_status = int(self.status)
-                        
-                        # Send with proper typing
-                        self.protocol.send_location(
-                            self.latitude, self.longitude, int_altitude, 
-                            int_speed, int_direction, int_alarm, int_status,
-                            additional_info
-                        )
-                    
+                        # Only send if we've moved enough or it's forced
+                        if self.should_send_location:
+                            logger.info(f"Sending location: {self.latitude}, {self.longitude}")
+                            # Ensure values are of correct types
+                            int_altitude = int(self.altitude)
+                            int_speed = int(self.speed)
+                            int_direction = int(self.direction)
+                            int_alarm = int(self.alarm)
+                            int_status = int(self.status)
+                            
+                            # Send via protocol to TCP server
+                            self.protocol.send_location(
+                                self.latitude, self.longitude, int_altitude, 
+                                int_speed, int_direction, int_alarm, int_status,
+                                additional_info
+                            )
+                            
+                            # Also publish directly to MQTT if configured
+                            if mqtt_client and self.publish_binary_payload:
+                                try:
+                                    # Create a location message using the protocol
+                                    from jt808.message import Message
+                                    location_msg = Message.create_location_report(
+                                        self.device_id, int_alarm, int_status, 
+                                        self.latitude, self.longitude, int_altitude,
+                                        int_speed, int_direction, None, additional_info
+                                    )
+                                    
+                                    # Get binary payload
+                                    binary_payload = location_msg.body
+                                    
+                                    # Format topic with device_id
+                                    topic_template = self.config.get('mqtt_location_topic', 'jt808/{device_id}/location')
+                                    topic = topic_template.replace('{device_id}', self.device_id)
+                                    
+                                    # Publish binary payload to MQTT
+                                    mqtt_client.publish(topic, binary_payload)
+                                    logger.info(f"Published binary location payload to MQTT topic: {topic}")
+                                except Exception as e:
+                                    logger.error(f"Failed to publish binary payload to MQTT: {e}")
+                            
+                            # Reset for next interval
+                            self.should_send_location = False
+                            self.prev_latitude = self.latitude
+                            self.prev_longitude = self.longitude
+                        else:
+                            logger.info(f"Skipping location update - position delta below threshold")
+                
                 # Sleep for the specified interval
                 for _ in range(location_interval):
                     if not self.running:
                         break
                     time.sleep(1)
+                
+                # Force a location update every interval regardless of movement
+                self.should_send_location = True
+                
             except Exception as e:
                 logger.error(f"Error in location loop: {e}")
                 time.sleep(5)  # Short delay before retrying
+                
+        # Clean up MQTT client if it was created
+        if mqtt_client:
+            mqtt_client.loop_stop()
+            mqtt_client.disconnect()
                 
     def _handle_batch_reporting(self, additional_info):
         """Handle batch reporting of location data"""
@@ -340,6 +419,10 @@ class GPSTrackingSimulator:
         # Convert direction from degrees to radians
         direction_rad = math.radians(self.direction)
         
+        # Store previous coordinates
+        old_lat = self.latitude
+        old_lon = self.longitude
+        
         # Calculate new coordinates (simplified, not considering Earth curvature for small distances)
         self.latitude += self.move_distance * math.cos(direction_rad)
         self.longitude += self.move_distance * math.sin(direction_rad)
@@ -350,6 +433,40 @@ class GPSTrackingSimulator:
         # Update speed with some randomness
         base_speed = self.config.get('speed', 60)  # km/h
         self.speed = max(0, min(120, base_speed + random.uniform(-10, 10)))
+        
+        # Calculate distance moved
+        # Simple distance calculation (approximate for small distances)
+        distance_moved = self._calculate_distance(old_lat, old_lon, self.latitude, self.longitude)
+        
+        # Check if we've moved far enough to send a location update
+        if distance_moved >= self.min_position_delta:
+            logger.info(f"Moved {distance_moved:.2f}m, exceeding minimum delta of {self.min_position_delta}m")
+            self.should_send_location = True
+        else:
+            logger.info(f"Moved only {distance_moved:.2f}m, below minimum delta of {self.min_position_delta}m")
+            
+    def _calculate_distance(self, lat1, lon1, lat2, lon2):
+        """
+        Calculate distance between two points in meters
+        Using Haversine formula
+        """
+        # Earth radius in meters
+        R = 6371000.0
+        
+        # Convert coordinates from degrees to radians
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+        
+        # Haversine formula
+        dlon = lon2_rad - lon1_rad
+        dlat = lat2_rad - lat1_rad
+        a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        distance = R * c
+        
+        return distance
         
     def _monitor_received_messages(self):
         """Monitor for messages received from the server"""
