@@ -62,18 +62,22 @@ class GPSTrackingSimulator:
         self.speed = int(config.get('speed', 0))
         self.direction = int(config.get('direction', 0))
         
-        # Previous location for filtering
-        self.prev_latitude = self.latitude
-        self.prev_longitude = self.longitude
+        # Position tracking for delta filtering
+        self.min_position_delta = float(config.get('min_position_delta', 5.0))  # Minimum movement in meters
+        self.should_send_location = True  # Flag to indicate if we should send location update
+        self.last_sent_position = {
+            'lat': self.latitude,
+            'lon': self.longitude,
+            'timestamp': time.time()
+        }
         
         # Move parameters
         self.move = config.get('move', True)
         self.move_distance = config.get('move_distance', 0.00005)  # Approx. 5 meters
         self.move_interval = config.get('location_interval', 60)   # Changed to 60 seconds default
         
-        # Position filtering parameters
-        self.min_position_delta = config.get('min_position_delta', 5.0)  # Minimum distance in meters to report
-        self.should_send_location = True  # Flag to track if we should send location update
+        # Position filtering parameters already initialized above
+        # No need to set min_position_delta and should_send_location again
         
         # MQTT direct publishing settings 
         self.publish_binary_payload = config.get('publish_binary_payload', True)
@@ -282,9 +286,11 @@ class GPSTrackingSimulator:
                 
     def _location_loop(self):
         """Send location reports periodically"""
+        # Get configuration parameters
         location_interval = self.config.get('location_interval', 60)  # Default is now 60 seconds
+        self.min_position_delta = float(self.config.get('min_position_delta', 5.0))  # Minimum movement in meters
         
-        logger.info(f"Starting location loop, interval: {location_interval}s")
+        logger.info(f"Starting location loop, interval: {location_interval}s, min_position_delta: {self.min_position_delta}m")
         
         # Import mqtt client if we'll be publishing directly
         mqtt_client = None
@@ -312,6 +318,10 @@ class GPSTrackingSimulator:
                 logger.error(f"Failed to setup MQTT client for direct publishing: {e}")
                 mqtt_client = None
         
+        # Use a shorter check interval for more responsive movement detection
+        check_interval = min(max(location_interval / 4, 1), 15)  # Between 1-15 seconds
+        next_forced_update = time.time() + location_interval  # Time when we'll force an update
+        
         while self.running:
             try:
                 if self.protocol.authenticated:
@@ -319,19 +329,27 @@ class GPSTrackingSimulator:
                     if self.move:
                         # Update position and check if we should send based on movement
                         self._update_location()
-                        
-                    # Add additional information
-                    additional_info = {
-                        0x01: self.config.get('mileage', 0),  # Mileage in km
-                        0x02: self.config.get('fuel', 100),   # Fuel in percentage (0-100)
-                    }
                     
-                    # Check if we should use batch reporting
-                    if self.batch_enabled:
-                        self._handle_batch_reporting(additional_info)
-                    else:
-                        # Only send if we've moved enough or it's forced
-                        if self.should_send_location:
+                    # Check if it's time to force a location update regardless of movement
+                    time_now = time.time()
+                    if time_now >= next_forced_update:
+                        logger.info(f"Forcing location update due to interval timeout ({location_interval}s)")
+                        self.should_send_location = True
+                        # Reset for next interval
+                        next_forced_update = time_now + location_interval
+                        
+                    # Only send if we've moved enough or it's time for a forced update    
+                    if self.should_send_location:
+                        # Add additional information
+                        additional_info = {
+                            0x01: self.config.get('mileage', 0),  # Mileage in km
+                            0x02: self.config.get('fuel', 100),   # Fuel in percentage (0-100)
+                        }
+                        
+                        # Check if we should use batch reporting
+                        if self.batch_enabled:
+                            self._handle_batch_reporting(additional_info)
+                        else:
                             logger.info(f"Sending location: {self.latitude}, {self.longitude}")
                             # Ensure values are of correct types
                             int_altitude = int(self.altitude)
@@ -371,21 +389,18 @@ class GPSTrackingSimulator:
                                 except Exception as e:
                                     logger.error(f"Failed to publish binary payload to MQTT: {e}")
                             
-                            # Reset for next interval
+                            # Update last sent position tracking
+                            self.last_sent_position = {
+                                'lat': self.latitude,
+                                'lon': self.longitude,
+                                'timestamp': time.time()
+                            }
                             self.should_send_location = False
-                            self.prev_latitude = self.latitude
-                            self.prev_longitude = self.longitude
-                        else:
-                            logger.info(f"Skipping location update - position delta below threshold")
-                
-                # Sleep for the specified interval
-                for _ in range(location_interval):
-                    if not self.running:
-                        break
-                    time.sleep(1)
-                
-                # Force a location update every interval regardless of movement
-                self.should_send_location = True
+                    else:
+                        logger.debug(f"Skipping location update - position delta below threshold")
+                        
+                # Use shorter sleep intervals to check movement more frequently
+                time.sleep(check_interval)
                 
             except Exception as e:
                 logger.error(f"Error in location loop: {e}")
