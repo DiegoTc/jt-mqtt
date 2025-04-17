@@ -434,16 +434,23 @@ class GPSTrackingSimulator:
         base_speed = self.config.get('speed', 60)  # km/h
         self.speed = max(0, min(120, base_speed + random.uniform(-10, 10)))
         
-        # Calculate distance moved
-        # Simple distance calculation (approximate for small distances)
+        # Calculate distance moved from last sent position (not just previous step)
+        distance_from_last_sent = self._calculate_distance(
+            self.last_sent_position['lat'], 
+            self.last_sent_position['lon'], 
+            self.latitude, 
+            self.longitude
+        )
+        
+        # Calculate distance from last step (for logging)
         distance_moved = self._calculate_distance(old_lat, old_lon, self.latitude, self.longitude)
         
-        # Check if we've moved far enough to send a location update
-        if distance_moved >= self.min_position_delta:
-            logger.info(f"Moved {distance_moved:.2f}m, exceeding minimum delta of {self.min_position_delta}m")
+        # Check if we've moved far enough from last sent position to send a location update
+        if distance_from_last_sent >= self.min_position_delta:
+            logger.info(f"Moved {distance_from_last_sent:.2f}m from last sent position, exceeding minimum delta of {self.min_position_delta}m")
             self.should_send_location = True
         else:
-            logger.info(f"Moved only {distance_moved:.2f}m, below minimum delta of {self.min_position_delta}m")
+            logger.info(f"Step moved: {distance_moved:.2f}m, total from last sent: {distance_from_last_sent:.2f}m (below minimum delta of {self.min_position_delta}m)")
             
     def _calculate_distance(self, lat1, lon1, lat2, lon2):
         """
