@@ -14,8 +14,13 @@
     "move": true,
     "speed": 60,
     "direction": 45,
-    "location_interval": 10,
+    "location_interval": 60,
     "heartbeat_interval": 60,
     "batch_enabled": false,
-    "batch_size": 5
+    "batch_size": 5,
+    "min_position_delta": 5.0,
+    "mqtt_location_topic": "pettracker/{device_id}/location",
+    "publish_binary_payload": true,
+    "throttle_duplicates": true,
+    "throttle_timeout": 60
 }
