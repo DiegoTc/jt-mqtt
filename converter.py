@@ -1021,7 +1021,25 @@ class JT808Server:
         if self.mqtt_client is None:
             logger.warning(f"MQTT client is not available. Simulated publish to {topic}")
             return
-        if not self.mqtt_config.get('mqtt_connected', False):
+            
+        # Check for connection status in three possible places
+        mqtt_connected = False
+        
+        # 1. Check client's _mqtt_connected property
+        if hasattr(self.mqtt_client, '_mqtt_connected'):
+            mqtt_connected = self.mqtt_client._mqtt_connected
+            
+        # 2. Check userdata mqtt_config
+        elif hasattr(self.mqtt_client, '_userdata') and isinstance(self.mqtt_client._userdata, dict) and \
+             'mqtt_config' in self.mqtt_client._userdata and \
+             self.mqtt_client._userdata['mqtt_config'].get('mqtt_connected', False):
+            mqtt_connected = True
+            
+        # 3. Check self.mqtt_config
+        elif self.mqtt_config.get('mqtt_connected', False):
+            mqtt_connected = True
+            
+        if not mqtt_connected:
             logger.warning(f"MQTT client is not connected. Simulated publish to {topic}")
             return
             
@@ -1076,6 +1094,14 @@ def on_connect(client, userdata, flags, rc):
     """MQTT connect callback"""
     if rc == 0:
         logger.info("Connected to MQTT broker successfully")
+        # Update mqtt_connected flag in the mqtt_config
+        if userdata and isinstance(userdata, dict) and 'mqtt_config' in userdata:
+            userdata['mqtt_config']['mqtt_connected'] = True
+            logger.info("Updated mqtt_connected flag to True in userdata")
+        
+        # Also set the _mqtt_connected property on the client object
+        client._mqtt_connected = True
+        
         # Publish a test message to confirm connection
         try:
             client.publish("pettracker/system/status", json.dumps({"status": "connected", "timestamp": datetime.now().isoformat()}))
@@ -1098,9 +1124,20 @@ def on_connect(client, userdata, flags, rc):
 
 def on_disconnect(client, userdata, rc):
     """MQTT disconnect callback"""
+    # Reset connection flags
+    if hasattr(client, '_mqtt_connected'):
+        client._mqtt_connected = False
+        
+    # Update mqtt_connected flag in userdata
+    if userdata and isinstance(userdata, dict) and 'mqtt_config' in userdata:
+        userdata['mqtt_config']['mqtt_connected'] = False
+        logger.info("Updated mqtt_connected flag to False in userdata")
+    
     if rc != 0:
         logger.error(f"Unexpected MQTT disconnection: {rc}")
         logger.info("Attempting to reconnect to MQTT broker...")
+    else:
+        logger.info("MQTT client disconnected cleanly")
 
 def on_publish(client, userdata, mid):
     """MQTT publish callback"""
@@ -1236,6 +1273,16 @@ def main():
     try:
         mqtt_connected = False
         
+        # Initialize mqtt_config early to ensure it's available in all cases
+        mqtt_config = {
+            'topic_prefix': config.get('mqtt_topic_prefix', 'pettracker'),
+            'mqtt_connected': mqtt_connected,
+            'throttle_duplicates': config.get('throttle_duplicates', True),
+            'throttle_timeout': config.get('throttle_timeout', 60),  # Seconds
+            'min_position_delta': config.get('min_position_delta', 5.0),  # Meters
+            'mqtt_location_topic': config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
+        }
+        
         if config.get('mqtt_broker_type', 'local').lower() == 'aws':
             # AWS IoT MQTT client setup
             logger.info("Setting up AWS IoT MQTT client")
@@ -1278,7 +1325,23 @@ def main():
         else:
             # Local Mosquitto MQTT client setup
             logger.info("Setting up local MQTT client")
-            mqtt_client = mqtt.Client(client_id=config.get('mqtt_client_id', 'pettracker_converter'))
+            
+            # MQTT configuration for the JT808 server
+            # Initialize here so we can pass it as userdata
+            mqtt_config = {
+                'topic_prefix': config.get('mqtt_topic_prefix', 'pettracker'),
+                'mqtt_connected': mqtt_connected,  # Will be updated in on_connect
+                'throttle_duplicates': config.get('throttle_duplicates', True),
+                'throttle_timeout': config.get('throttle_timeout', 60),  # Seconds
+                'min_position_delta': config.get('min_position_delta', 5.0),  # Meters
+                'mqtt_location_topic': config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
+            }
+            
+            # Pass mqtt_config as userdata so it can be updated in callbacks
+            mqtt_client = mqtt.Client(
+                client_id=config.get('mqtt_client_id', 'pettracker_converter'),
+                userdata={'mqtt_config': mqtt_config}
+            )
             mqtt_client.on_connect = on_connect
             mqtt_client.on_disconnect = on_disconnect
             mqtt_client.on_publish = on_publish
@@ -1302,15 +1365,16 @@ def main():
         mqtt_client = None
         mqtt_connected = False
         
-    # MQTT configuration for the JT808 server
-    mqtt_config = {
-        'topic_prefix': config.get('mqtt_topic_prefix', 'pettracker'),
-        'mqtt_connected': mqtt_connected,
-        'throttle_duplicates': config.get('throttle_duplicates', True),
-        'throttle_timeout': config.get('throttle_timeout', 60),  # Seconds
-        'min_position_delta': config.get('min_position_delta', 5.0),  # Meters
-        'mqtt_location_topic': config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
-    }
+    # If mqtt_config wasn't initialized in the try/except block above, initialize it now
+    if 'mqtt_config' not in locals():
+        mqtt_config = {
+            'topic_prefix': config.get('mqtt_topic_prefix', 'pettracker'),
+            'mqtt_connected': mqtt_connected,
+            'throttle_duplicates': config.get('throttle_duplicates', True),
+            'throttle_timeout': config.get('throttle_timeout', 60),  # Seconds
+            'min_position_delta': config.get('min_position_delta', 5.0),  # Meters
+            'mqtt_location_topic': config.get('mqtt_location_topic', 'pettracker/{device_id}/location')
+        }
     
     # Create and start the JT808 server
     server = JT808Server(config['jt808_host'], config['jt808_port'], mqtt_client, mqtt_config)
