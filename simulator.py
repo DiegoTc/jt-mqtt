@@ -510,6 +510,64 @@ class GPSTrackingSimulator:
             # Reset the distance threshold flag after sending batch
             self.should_send_location = False
             
+    def should_publish_location(self, current_lat, current_lon, current_time, current_speed):
+        """
+        Determine if a location update should be published based on dual-gating criteria
+        
+        Args:
+            current_lat: Current latitude
+            current_lon: Current longitude
+            current_time: Current timestamp (float)
+            current_speed: Current speed in km/h
+            
+        Returns:
+            tuple: (should_publish, reason, time_threshold, distance_threshold)
+        """
+        # Get thresholds based on current speed/activity
+        if current_speed > float(self.config.get('speed_threshold_fast', 20)):
+            # Fast moving
+            time_threshold = float(self.config.get('fast_interval', 5))
+            distance_threshold = float(self.config.get('fast_distance', 5.0))
+            activity = "fast_moving"
+        elif current_speed > float(self.config.get('speed_threshold_walking', 5)):
+            # Walking
+            time_threshold = float(self.config.get('walking_interval', 60))
+            distance_threshold = float(self.config.get('walking_distance', 10.0))
+            activity = "walking"
+        else:
+            # Resting
+            time_threshold = float(self.config.get('resting_interval', 300))
+            distance_threshold = float(self.config.get('resting_distance', 15.0))
+            activity = "resting"
+        
+        # Check time threshold - must be at least the minimum interval since last send
+        time_since_last = current_time - self.last_sent_position['timestamp']
+        time_threshold_met = time_since_last >= time_threshold
+        
+        # Check distance threshold - must have moved minimum distance since last send
+        distance_moved = self._calculate_distance(
+            self.last_sent_position['lat'], 
+            self.last_sent_position['lon'],
+            current_lat,
+            current_lon
+        )
+        distance_threshold_met = distance_moved >= distance_threshold
+        
+        # Both thresholds must be met (AND logic)
+        should_publish = time_threshold_met and distance_threshold_met
+        
+        # Prepare detailed reason for logging
+        if should_publish:
+            reason = f"Both time ({time_threshold}s, elapsed={time_since_last:.1f}s) and distance ({distance_threshold}m, moved={distance_moved:.2f}m) thresholds met for {activity}"
+        elif time_threshold_met and not distance_threshold_met:
+            reason = f"Time threshold met ({time_threshold}s, elapsed={time_since_last:.1f}s), but distance threshold ({distance_threshold}m) not met (moved only {distance_moved:.2f}m)"
+        elif distance_threshold_met and not time_threshold_met:
+            reason = f"Distance threshold met ({distance_threshold}m, moved={distance_moved:.2f}m), but time threshold ({time_threshold}s) not met (elapsed only {time_since_last:.1f}s)"
+        else:
+            reason = f"Neither threshold met: time={time_since_last:.1f}s/{time_threshold}s, distance={distance_moved:.2f}m/{distance_threshold}m"
+        
+        return (should_publish, reason, time_threshold, distance_threshold)
+
     def _update_location(self):
         """Update location coordinates to simulate movement with activity-based thresholds"""
         # Convert direction from degrees to radians
