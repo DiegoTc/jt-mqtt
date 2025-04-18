@@ -1682,6 +1682,10 @@ def main():
         }
     
     # Create and start the JT808 server
+    # Make sure mqtt_config is defined, even if connection fails
+    if 'mqtt_config' not in locals():
+        mqtt_config = {}
+        
     server = JT808Server(config['jt808_host'], config['jt808_port'], mqtt_client, mqtt_config)
     
     if not server.start():

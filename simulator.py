@@ -264,22 +264,43 @@ class GPSTrackingSimulator:
         logger.info("Simulator stopped")
         
     def _heartbeat_loop(self):
-        """Send heartbeat messages periodically"""
+        """Send heartbeat messages periodically with duplicate prevention"""
         heartbeat_interval = self.config.get('heartbeat_interval', 60)  # Seconds
         
-        logger.info(f"Starting heartbeat loop, interval: {heartbeat_interval}s")
+        # Throttling parameters for heartbeat
+        self.last_heartbeat_time = 0
+        min_heartbeat_interval = max(10, int(heartbeat_interval * 0.8))  # Prevent sending heartbeats too frequently
+        
+        logger.info(f"Starting heartbeat loop, interval: {heartbeat_interval}s, minimum interval: {min_heartbeat_interval}s")
         
         while self.running:
             try:
+                current_time = time.time()
                 if self.protocol.authenticated:
-                    logger.info("Sending heartbeat...")
-                    self.protocol.send_heartbeat()
+                    # Check if enough time has passed since the last heartbeat
+                    time_since_last = current_time - self.last_heartbeat_time
                     
-                # Sleep for the specified interval
-                for _ in range(heartbeat_interval):
+                    if time_since_last >= min_heartbeat_interval:
+                        logger.info(f"Sending heartbeat (last sent {time_since_last:.1f}s ago)...")
+                        self.protocol.send_heartbeat()
+                        self.last_heartbeat_time = current_time
+                    else:
+                        logger.debug(f"Skipping heartbeat, sent too recently ({time_since_last:.1f}s < {min_heartbeat_interval}s)")
+                    
+                # Adaptive sleep to maintain proper interval from last sent heartbeat
+                sleep_time = max(1, min(heartbeat_interval - (time.time() - self.last_heartbeat_time), heartbeat_interval))
+                
+                # Sleep in small increments to allow for clean shutdown
+                for _ in range(int(sleep_time)):
                     if not self.running:
                         break
                     time.sleep(1)
+                
+                # Sleep any remaining fraction of a second
+                remaining = sleep_time - int(sleep_time)
+                if remaining > 0 and self.running:
+                    time.sleep(remaining)
+                    
             except Exception as e:
                 logger.error(f"Error in heartbeat loop: {e}")
                 time.sleep(5)  # Short delay before retrying
