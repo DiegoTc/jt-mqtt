@@ -616,6 +616,12 @@ class GPSTrackingSimulator:
         self.latitude += self.move_distance * math.cos(direction_rad)
         self.longitude += self.move_distance * math.sin(direction_rad)
         
+        # Ensure latitude is within valid range (-90 to 90)
+        self.latitude = max(-90.0, min(90.0, self.latitude))
+        
+        # Ensure longitude is within valid range (-180 to 180)
+        self.longitude = max(-180.0, min(180.0, self.longitude))
+        
         # Add some randomness to direction
         self.direction = (self.direction + random.uniform(-10, 10)) % 360
         
