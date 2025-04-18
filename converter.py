@@ -960,8 +960,42 @@ class JT808Server:
                     "additional": additional_info
                 }
             
-            # Publish using the configured topic (with device ID)
-            # Unified topic strategy: only use a single topic per device
+            # CRITICAL FIX: Check for duplicate messages before publishing
+            # By storing and comparing the last published payload for each device
+            if not hasattr(self, '_last_published_payload'):
+                self._last_published_payload = {}
+                
+            # Convert payload to string for comparison
+            payload_str = json.dumps(payload, sort_keys=True)
+            
+            # Check if this exact payload was already published for this device
+            if device_id in self._last_published_payload and self._last_published_payload[device_id] == payload_str:
+                logger.warning(f"Duplicate message detected for {device_id}, skipping publication")
+                return
+                
+            # Store this payload for future duplication checks
+            self._last_published_payload[device_id] = payload_str
+            
+            # CRITICAL FIX: Check for duplicate messages before publishing
+            # By storing and comparing the last published payload for this device per topic
+            if not hasattr(self, '_last_published_payload'):
+                self._last_published_payload = {}
+                
+            # Create a unique key for this device+topic combination
+            device_topic_key = f"{device_id}:{topic}"
+                
+            # Convert payload to string for comparison
+            payload_str = json.dumps(payload, sort_keys=True)
+            
+            # Check if this exact payload was already published for this device+topic
+            if device_topic_key in self._last_published_payload and self._last_published_payload[device_topic_key] == payload_str:
+                logger.warning(f"Duplicate message detected for {device_id} on topic {topic}, skipping publication")
+                return
+                
+            # Store this payload for future duplication checks
+            self._last_published_payload[device_topic_key] = payload_str
+            
+            # Publish using the configured topic
             self._publish_mqtt(topic, payload)
             
             # Update status
