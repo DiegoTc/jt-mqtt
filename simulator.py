@@ -372,26 +372,21 @@ class GPSTrackingSimulator:
                         self.min_position_delta = new_min_distance
                     
                     # Implement strict dual-gating: BOTH time AND distance must be satisfied
-                    time_now = time.time()
-                    time_threshold_met = time_now >= next_forced_update
-                    distance_threshold_met = self.should_send_location  # This is set to True in _update_location when distance threshold is met
+                    current_time = time.time()
                     
-                    # Check if we should send based on both thresholds
-                    should_send = time_threshold_met and distance_threshold_met
+                    # Check if we should publish based on dual-gating criteria (both time AND distance)
+                    should_publish, reason, time_threshold, distance_threshold = self.should_publish_location(
+                        self.latitude, self.longitude, current_time, self.speed
+                    )
                     
-                    # Log detailed threshold status
-                    if time_threshold_met and not distance_threshold_met:
-                        logger.info(f"Time threshold met ({location_interval}s elapsed), but distance threshold ({self.min_position_delta}m) not met yet. Waiting for more movement.")
-                    elif distance_threshold_met and not time_threshold_met:
-                        time_remaining = next_forced_update - time_now
-                        logger.info(f"Distance threshold ({self.min_position_delta}m) met, but time threshold not met yet. Waiting {time_remaining:.1f}s more.")
-                    elif time_threshold_met and distance_threshold_met:
-                        logger.info(f"Both time ({location_interval}s) and distance ({self.min_position_delta}m) thresholds met. Sending location update.")
+                    # Log the decision with detailed reason
+                    if should_publish:
+                        logger.info(f"Publishing location: {reason}")
                     else:
-                        logger.info(f"Neither time nor distance threshold met. Time remaining: {next_forced_update - time_now:.1f}s, Distance moved: {self._calculate_distance(self.last_sent_position['lat'], self.last_sent_position['lon'], self.latitude, self.longitude):.2f}m")
+                        logger.debug(f"Skipping location update: {reason}")
                     
                     # Only send if BOTH thresholds (time and distance) are met
-                    if should_send:
+                    if should_publish:
                         # Determine which additional info to include based on optimization settings
                         additional_info = {}
                         
@@ -457,17 +452,20 @@ class GPSTrackingSimulator:
                                 except Exception as e:
                                     logger.error(f"Failed to publish binary payload to MQTT: {e}")
                             
-                            # Update last sent position tracking
+                            # Update last sent position tracking with current values
+                            current_time = time.time()
                             self.last_sent_position = {
                                 'lat': self.latitude,
                                 'lon': self.longitude,
-                                'timestamp': time.time()
+                                'timestamp': current_time
                             }
                             # Reset the distance threshold flag - will only be set to True again when sufficient movement occurs
                             self.should_send_location = False
                             
-                            # CRITICAL FIX: Reset the time threshold as well after successful sending
-                            next_forced_update = time.time() + location_interval
+                            # CRITICAL FIX: Reset the time threshold using the same timestamp as position tracking
+                            # This ensures perfect synchronization of both reference points
+                            _, _, time_threshold, _ = self.should_publish_location(self.latitude, self.longitude, current_time, self.speed)
+                            next_forced_update = current_time + time_threshold
                     else:
                         logger.debug(f"Skipping location update - position delta below threshold")
                         
@@ -501,14 +499,19 @@ class GPSTrackingSimulator:
             self.protocol.send_batch_location(self.batch_locations)
             self.batch_locations = []
             
-            # Update last sent position tracking
+            # Update last sent position tracking with current values
+            current_time = time.time()
             self.last_sent_position = {
                 'lat': self.latitude,
                 'lon': self.longitude,
-                'timestamp': time.time()
+                'timestamp': current_time
             }
             # Reset the distance threshold flag after sending batch
             self.should_send_location = False
+            
+            # CRITICAL FIX: Also synchronize the time threshold after batch sending
+            # to prevent immediate spam of messages after batch is sent
+            next_forced_update = current_time + float(self.config.get('location_interval', 60))
             
     def should_publish_location(self, current_lat, current_lon, current_time, current_speed):
         """
