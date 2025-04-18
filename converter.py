@@ -748,6 +748,12 @@ class JT808Server:
                 latitude = -latitude
             if status & StatusBit.LON_WEST:
                 longitude = -longitude
+                
+            # Validate latitude and longitude are within valid ranges
+            latitude = max(-90.0, min(90.0, latitude))
+            longitude = max(-180.0, min(180.0, longitude))
+            
+            logger.debug(f"Validated coordinates: lat={latitude}, lon={longitude} (original: lat_value={lat_value}, lon_value={lon_value})")
             
             # Determine pet's current activity level based on speed with exact thresholds
             # speed > 20 km/h: interval = 5 s, distance = 5 m
