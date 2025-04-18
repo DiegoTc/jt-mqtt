@@ -895,7 +895,7 @@ class JT808Server:
                 if timestamp.startswith('0001') or not re.match(r'^[0-9]{12}$', timestamp):
                     # These are likely default/placeholder timestamps or invalid formats
                     logger.warning(f"Invalid or placeholder timestamp detected: {timestamp}, using current time")
-                    iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                    iso_timestamp = get_standardized_timestamp()
                 else:
                     year = int(f"20{timestamp[0:2]}")
                     month = int(timestamp[2:4])
@@ -1243,7 +1243,7 @@ class JT808Server:
             # Original format
             payload = {
                 "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": get_standardized_timestamp(),
                 "event": "logout"
             }
         
@@ -1453,7 +1453,7 @@ def on_connect(client, userdata, flags, rc):
         
         # Publish a test message to confirm connection
         try:
-            client.publish("pettracker/system/status", json.dumps({"status": "connected", "timestamp": datetime.now().isoformat()}))
+            client.publish("pettracker/system/status", json.dumps({"status": "connected", "timestamp": get_standardized_timestamp()}))
             logger.info("Published test message to MQTT broker")
         except Exception as e:
             logger.error(f"Failed to publish test message: {e}")
