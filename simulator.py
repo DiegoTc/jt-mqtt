@@ -456,6 +456,7 @@ class GPSTrackingSimulator:
                                 try:
                                     # Create a location message using the protocol
                                     from jt808.message import Message
+                                    # Use the same clamped values for MQTT publishing
                                     location_msg = Message.create_location_report(
                                         self.device_id, int_alarm, int_status, 
                                         self.latitude, self.longitude, int_altitude,
@@ -506,10 +507,15 @@ class GPSTrackingSimulator:
                 
     def _handle_batch_reporting(self, additional_info):
         """Handle batch reporting of location data"""
-        # Add current location to batch
+        # Add current location to batch with values clamped to valid ranges
+        # Ensure speed is within valid byte range (0-255)
+        clamped_speed = min(255, max(0, int(self.speed)))
+        # Ensure direction is within valid byte range (0-255)
+        clamped_direction = min(255, max(0, int(self.direction % 256)))
+        
         self.batch_locations.append((
             self.latitude, self.longitude, self.altitude, 
-            self.speed, self.direction, self.alarm, self.status,
+            clamped_speed, clamped_direction, self.alarm, self.status,
             additional_info
         ))
         

@@ -329,10 +329,12 @@ class JT808Protocol:
             float_lat = float(latitude)
             float_lon = float(longitude)
             
-            # Make sure numeric values are integers
+            # Make sure numeric values are integers and within valid ranges
             int_altitude = int(altitude)
-            int_speed = int(speed)
-            int_direction = int(direction)
+            # Ensure speed is within valid byte range (0-255)
+            int_speed = min(255, max(0, int(speed)))
+            # Ensure direction is within valid byte range (0-255)
+            int_direction = min(255, max(0, int(direction % 256)))
             int_alarm_flag = int(alarm_flag)
             int_status = int(status)
             
