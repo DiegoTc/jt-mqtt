@@ -18,6 +18,7 @@ try:
     import traceback
     import random
     import math
+    import re
     import paho.mqtt.client as mqtt
     import ssl
     from datetime import datetime
@@ -882,28 +883,46 @@ class JT808Server:
             
             # Format timestamp correctly (ensure valid ISO-8601 format)
             try:
-                year = int(f"20{timestamp[0:2]}")
-                month = int(timestamp[2:4])
-                day = int(timestamp[4:6])
-                hour = int(timestamp[6:8])
-                minute = int(timestamp[8:10])
-                second = int(timestamp[10:12])
-                
-                # Validate date components before formatting
-                if month < 1 or month > 12:
-                    month = 1
-                if day < 1 or day > 31:
-                    day = 1
-                if hour > 23:
-                    hour = 0
-                if minute > 59:
-                    minute = 0
-                if second > 59:
-                    second = 0
+                # FIX: First check for common issues with timestamps
+                # Check for placeholder or invalid timestamp: 0001, 240000, etc.
+                if timestamp.startswith('0001') or not re.match(r'^[0-9]{12}$', timestamp):
+                    # These are likely default/placeholder timestamps or invalid formats
+                    logger.warning(f"Invalid or placeholder timestamp detected: {timestamp}, using current time")
+                    iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                else:
+                    year = int(f"20{timestamp[0:2]}")
+                    month = int(timestamp[2:4])
+                    day = int(timestamp[4:6])
+                    hour = int(timestamp[6:8])
+                    minute = int(timestamp[8:10])
+                    second = int(timestamp[10:12])
                     
-                # Create valid ISO-8601 timestamp
-                iso_timestamp = f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
-                logger.debug(f"Corrected timestamp format: {iso_timestamp}")
+                    # Validate date components before formatting
+                    if month < 1 or month > 12:
+                        month = 1
+                    if day < 1 or day > 31:
+                        day = 1
+                    if hour > 23:
+                        hour = 0
+                    if minute > 59:
+                        minute = 0
+                    if second > 59:
+                        second = 0
+                    
+                    # Create valid ISO-8601 timestamp
+                    iso_timestamp = f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+                    
+                    # FIX: Validate that timestamp is within reasonable range (not too old/future)
+                    timestamp_date = datetime.strptime(iso_timestamp, "%Y-%m-%dT%H:%M:%SZ")
+                    current_date = datetime.utcnow()
+                    time_diff = (current_date - timestamp_date).total_seconds()
+                    
+                    # If timestamp is more than 1 day old or 1 hour in the future, use current time
+                    if time_diff > 86400 or time_diff < -3600:
+                        logger.warning(f"Timestamp outside reasonable range: {iso_timestamp}, using current time")
+                        iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                    else:
+                        logger.debug(f"Valid timestamp format: {iso_timestamp}")
             except (ValueError, IndexError) as e:
                 # If there's any issue with the timestamp parsing, use current time
                 logger.warning(f"Invalid timestamp format: {timestamp}, using current time. Error: {e}")
