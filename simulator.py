@@ -387,6 +387,8 @@ class GPSTrackingSimulator:
                         logger.info(f"Distance threshold ({self.min_position_delta}m) met, but time threshold not met yet. Waiting {time_remaining:.1f}s more.")
                     elif time_threshold_met and distance_threshold_met:
                         logger.info(f"Both time ({location_interval}s) and distance ({self.min_position_delta}m) thresholds met. Sending location update.")
+                    else:
+                        logger.info(f"Neither time nor distance threshold met. Time remaining: {next_forced_update - time_now:.1f}s, Distance moved: {self._calculate_distance(self.last_sent_position['lat'], self.last_sent_position['lon'], self.latitude, self.longitude):.2f}m")
                     
                     # Only send if BOTH thresholds (time and distance) are met
                     if should_send:
