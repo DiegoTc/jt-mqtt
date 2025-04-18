@@ -22,6 +22,13 @@ try:
     import paho.mqtt.client as mqtt
     import ssl
     from datetime import datetime
+    
+    def get_standardized_timestamp():
+        """Return a standardized ISO-8601 timestamp in UTC with 'Z' suffix.
+        
+        This ensures all timestamps are in the same format: YYYY-MM-DDThh:mm:ssZ
+        """
+        return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     from dotenv import load_dotenv
     
     # Load environment variables from .env file
@@ -567,7 +574,7 @@ class JT808Server:
             topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/heartbeat"
             payload = {
                 "device_id": device_id,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": get_standardized_timestamp(),
                 "event": "heartbeat"
             }
             
@@ -640,7 +647,7 @@ class JT808Server:
                 topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/registration"
                 payload = {
                     "device_id": device_id,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": get_standardized_timestamp(),
                     "event": "registration",
                     "province_id": province_id,
                     "city_id": city_id,
@@ -701,7 +708,7 @@ class JT808Server:
                 topic = f"{self.mqtt_config['topic_prefix']}/{device_id}/authentication"
                 payload = {
                     "device_id": device_id,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": get_standardized_timestamp(),
                     "event": "authentication",
                     "auth_code": auth_code
                 }
@@ -1175,7 +1182,7 @@ class JT808Server:
                 # Highly optimized batch payload
                 payload = {
                     "d": device_id,  # Shortened key name
-                    "t": datetime.now().isoformat(),  # Shortened key name
+                    "t": get_standardized_timestamp(),  # Shortened key name
                     "n": len(locations),  # Shortened key name for count
                     "locs": locations  # Shortened key name for locations
                 }
@@ -1187,7 +1194,7 @@ class JT808Server:
                 # Original format with full field names
                 payload = {
                     "device_id": device_id,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": get_standardized_timestamp(),
                     "type": type_id,
                     "count": len(locations),
                     "locations": locations
@@ -1229,7 +1236,7 @@ class JT808Server:
             # Optimized logout payload
             payload = {
                 "d": device_id,  # Shortened device_id
-                "t": datetime.now().isoformat(),  # Shortened timestamp
+                "t": get_standardized_timestamp(),  # Shortened timestamp
                 "e": "logout"  # Shortened event
             }
         else:
@@ -1313,14 +1320,14 @@ class JT808Server:
                 # Optimized status payload
                 payload = {
                     "d": device_id,  # Shortened key
-                    "t": datetime.now().isoformat(),  # Shortened key
+                    "t": get_standardized_timestamp(),  # Shortened key
                     "s": status  # Shortened key
                 }
             else:
                 # Original format
                 payload = {
                     "device_id": device_id,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": get_standardized_timestamp(),
                     "status": status
                 }
             
