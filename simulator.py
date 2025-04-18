@@ -526,21 +526,24 @@ class GPSTrackingSimulator:
         Returns:
             tuple: (should_publish, reason, time_threshold, distance_threshold)
         """
-        # Get thresholds based on current speed/activity
-        if current_speed > float(self.config.get('speed_threshold_fast', 20)):
+        # Get thresholds based on current speed/activity with strict parameters
+        # speed > 20 km/h: interval = 5 s, distance = 5 m
+        # 5 < speed ≤ 20: interval = 60 s, distance = 10 m
+        # speed ≤ 5: interval = 300 s, distance = 15 m
+        if current_speed > 20.0:
             # Fast moving
-            time_threshold = float(self.config.get('fast_interval', 5))
-            distance_threshold = float(self.config.get('fast_distance', 5.0))
+            time_threshold = 5.0
+            distance_threshold = 5.0
             activity = "fast_moving"
-        elif current_speed > float(self.config.get('speed_threshold_walking', 5)):
+        elif current_speed > 5.0:
             # Walking
-            time_threshold = float(self.config.get('walking_interval', 60))
-            distance_threshold = float(self.config.get('walking_distance', 10.0))
+            time_threshold = 60.0
+            distance_threshold = 10.0
             activity = "walking"
         else:
             # Resting
-            time_threshold = float(self.config.get('resting_interval', 300))
-            distance_threshold = float(self.config.get('resting_distance', 15.0))
+            time_threshold = 300.0
+            distance_threshold = 15.0
             activity = "resting"
         
         # Check time threshold - must be at least the minimum interval since last send
@@ -556,7 +559,7 @@ class GPSTrackingSimulator:
         )
         distance_threshold_met = distance_moved >= distance_threshold
         
-        # Both thresholds must be met (AND logic)
+        # CRITICAL: Both thresholds must be met (AND logic)
         should_publish = time_threshold_met and distance_threshold_met
         
         # Prepare detailed reason for logging

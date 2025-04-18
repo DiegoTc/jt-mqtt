@@ -103,19 +103,22 @@ class JT808Server:
         # Device state tracking for dual-gating (time + distance)
         self.device_state = {}  # {device_id: {'lat': lat, 'lon': lon, 'last_pub_time': timestamp, 'activity': activity}}
         
-        # Activity-based threshold settings
+        # Activity-based threshold settings with strict values
+        # speed > 20 km/h: interval = 5 s, distance = 5 m
+        # 5 < speed ≤ 20: interval = 60 s, distance = 10 m
+        # speed ≤ 5: interval = 300 s, distance = 15 m
         self.thresholds = {
             'fast_moving': {  # > 20 km/h
-                'interval': mqtt_config.get('fast_interval', 5),       # seconds
-                'distance': mqtt_config.get('fast_distance', 5.0)      # meters
+                'interval': 5.0,       # seconds
+                'distance': 5.0        # meters
             },
             'walking': {      # 5-20 km/h
-                'interval': mqtt_config.get('walking_interval', 60),      # seconds
-                'distance': mqtt_config.get('walking_distance', 10.0)     # meters
+                'interval': 60.0,      # seconds
+                'distance': 10.0       # meters
             },
             'resting': {      # < 5 km/h
-                'interval': mqtt_config.get('resting_interval', 300),     # seconds
-                'distance': mqtt_config.get('resting_distance', 15.0)     # meters
+                'interval': 300.0,     # seconds
+                'distance': 15.0       # meters
             }
         }
         
@@ -746,11 +749,14 @@ class JT808Server:
             if status & StatusBit.LON_WEST:
                 longitude = -longitude
             
-            # Determine pet's current activity level based on speed
-            activity_level = "resting"
-            if speed > 20:  # km/h
+            # Determine pet's current activity level based on speed with exact thresholds
+            # speed > 20 km/h: interval = 5 s, distance = 5 m
+            # 5 < speed ≤ 20: interval = 60 s, distance = 10 m
+            # speed ≤ 5: interval = 300 s, distance = 15 m
+            activity_level = "resting"  # default
+            if speed > 20.0:  # km/h
                 activity_level = "fast_moving"
-            elif speed > 5:  # km/h
+            elif speed > 5.0:  # km/h
                 activity_level = "walking"
             
             # Initialize the device state if this is the first message from this device
@@ -868,8 +874,34 @@ class JT808Server:
                 if not flag_name.startswith('_'):
                     alarm_flags[flag_name.lower()] = bool(alarm_flag & flag_value)
             
-            # Format timestamp
-            iso_timestamp = f"20{timestamp[0:2]}-{timestamp[2:4]}-{timestamp[4:6]}T{timestamp[6:8]}:{timestamp[8:10]}:{timestamp[10:12]}Z"
+            # Format timestamp correctly (ensure valid ISO-8601 format)
+            try:
+                year = int(f"20{timestamp[0:2]}")
+                month = int(timestamp[2:4])
+                day = int(timestamp[4:6])
+                hour = int(timestamp[6:8])
+                minute = int(timestamp[8:10])
+                second = int(timestamp[10:12])
+                
+                # Validate date components before formatting
+                if month < 1 or month > 12:
+                    month = 1
+                if day < 1 or day > 31:
+                    day = 1
+                if hour > 23:
+                    hour = 0
+                if minute > 59:
+                    minute = 0
+                if second > 59:
+                    second = 0
+                    
+                # Create valid ISO-8601 timestamp
+                iso_timestamp = f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+                logger.debug(f"Corrected timestamp format: {iso_timestamp}")
+            except (ValueError, IndexError) as e:
+                # If there's any issue with the timestamp parsing, use current time
+                logger.warning(f"Invalid timestamp format: {timestamp}, using current time. Error: {e}")
+                iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
             
             # Use the configured MQTT location topic (with device_id replacement)
             topic = self.mqtt_location_topic.replace('{device_id}', device_id)
@@ -1017,8 +1049,32 @@ class JT808Server:
                 if status & StatusBit.LON_WEST:
                     longitude = -longitude
                     
-                # Get iso timestamp
-                iso_timestamp = f"20{timestamp[0:2]}-{timestamp[2:4]}-{timestamp[4:6]}T{timestamp[6:8]}:{timestamp[8:10]}:{timestamp[10:12]}Z"
+                # Get iso timestamp with validation
+                try:
+                    year = int(f"20{timestamp[0:2]}")
+                    month = int(timestamp[2:4])
+                    day = int(timestamp[4:6])
+                    hour = int(timestamp[6:8])
+                    minute = int(timestamp[8:10])
+                    second = int(timestamp[10:12])
+                    
+                    # Validate date components before formatting
+                    if month < 1 or month > 12:
+                        month = 1
+                    if day < 1 or day > 31:
+                        day = 1
+                    if hour > 23:
+                        hour = 0
+                    if minute > 59:
+                        minute = 0
+                    if second > 59:
+                        second = 0
+                        
+                    # Create valid ISO-8601 timestamp
+                    iso_timestamp = f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+                except (ValueError, IndexError):
+                    # Use current time if there's an issue
+                    iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 
                 # Create location entry based on optimization setting
                 if self.optimize_payload:
