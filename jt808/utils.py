@@ -137,13 +137,30 @@ def remove_escape_rules(data):
         raise
 
 def get_current_timestamp():
-    """Get current timestamp in the format required by the protocol (BCD)"""
-    now = datetime.datetime.now()
+    """Get current timestamp in the format required by the protocol (BCD)
+    
+    Uses UTC time for consistency with the standardized timestamp format
+    used elsewhere in the application.
+    
+    Returns:
+        Format: YYMMDDhhmmss as string
+    """
+    now = datetime.datetime.utcnow()
     # Format: YYMMDDhhmmss
     return f'{now.year % 100:02d}{now.month:02d}{now.day:02d}{now.hour:02d}{now.minute:02d}{now.second:02d}'
 
 def parse_bcd_timestamp(bcd_timestamp):
-    """Parse BCD timestamp into a datetime object"""
+    """Parse BCD timestamp into a datetime object
+    
+    The timestamp is assumed to be in UTC time per JT/T 808-2013 protocol standard
+    and our application's use of standardized timestamps.
+    
+    Args:
+        bcd_timestamp: BCD encoded timestamp (6 bytes)
+        
+    Returns:
+        datetime object in UTC timezone
+    """
     timestamp_str = bytes_to_bcd(bcd_timestamp)
     year = 2000 + int(timestamp_str[0:2])
     month = int(timestamp_str[2:4])
@@ -151,6 +168,7 @@ def parse_bcd_timestamp(bcd_timestamp):
     hour = int(timestamp_str[6:8])
     minute = int(timestamp_str[8:10])
     second = int(timestamp_str[10:12])
+    # Create datetime in UTC timezone
     return datetime.datetime(year, month, day, hour, minute, second)
 
 def decimal_to_dms(decimal_degrees):
