@@ -1,0 +1,41 @@
+I have a Python “PetTracker” simulator (`simulator.py`) that should only publish a new location when **both**:
+1. The pet has moved beyond the distance threshold for its speed tier:  
+   - Fast (> 20 km/h): ≥ 5 m  
+   - Walking (5–20 km/h): ≥ 10 m  
+   - Resting (≤ 5 km/h): ≥ 15 m  
+2. The minimum time interval for that tier has passed:  
+   - Fast: ≥ 5 s  
+   - Walking: ≥ 60 s  
+   - Resting: ≥ 300 s  
+
+Despite previous attempts, the simulator still spams the **same** coordinates dozens of times in a row without actual movement or waiting. Example log:
+
+pettracker/123456/location {"d":"123456","t":"2025-04-17T19:19:55Z","loc":{"lat":1.203056,"lon":2091.650278,"spd":10.0,"dir":5}}
+
+repeated 50+ times immediately
+markdown
+Copy
+
+# What’s Wrong
+- The code is **not** resetting `last_published_lat`, `last_published_lon`, and `last_published_time` **after** sending.
+- It may be using `or` instead of `and` when checking distance/time thresholds.
+- The timestamp string `"t"` might not be correctly parsed into a float before comparing.
+- Both single and batch sending logic need the same reset handling.
+
+# Your Task
+1. **Produce a unified diff** (or full replacement) for **only** the two key sections in `simulator.py`:
+   - `should_publish_location(current_lat, current_lon, current_time, current_speed)`
+   - The section in `_location_loop()` (or `send_location_update()`) that:
+     - Calls `should_publish_location`
+     - Calls `publish_location(...)`
+     - **Resets** `last_published_lat`, `last_published_lon`, **and** `last_published_time` immediately **after** a successful send
+2. Ensure the logic uses **`and`** (not `or`) between distance **and** time checks.
+3. Parse the ISO‐8601 `"t"` string into a proper Unix timestamp (`float`) before comparisons.
+4. Add **debug logs** indicating which threshold(s) failed when skipping a publish.
+5. At the end of your patch, include exactly these three commands (no extra text):
+
+```bash
+git add simulator.py
+git commit -m "Fix location-publish logic: enforce AND thresholds, reset refs after send"
+git push
+Do not include any additional explanation—just the code diff (or file replacement) and the three git commands.```
