@@ -561,20 +561,25 @@ class GPSTrackingSimulator:
         # speed ≤ 5: interval = 300 s, distance = 15 m
         if current_speed > 20.0:
             # Fast moving
-            time_threshold = 5.0
-            distance_threshold = 5.0
+            time_threshold = float(self.config.get('interval_fast', 5.0))
+            distance_threshold = float(self.config.get('fast_distance', 5.0))
             activity = "fast_moving"
         elif current_speed > 5.0:
             # Walking
-            time_threshold = 60.0
-            distance_threshold = 10.0
+            time_threshold = float(self.config.get('interval_walking', 60.0))
+            distance_threshold = float(self.config.get('walking_distance', 10.0))
             activity = "walking"
         else:
             # Resting
-            time_threshold = 300.0
-            distance_threshold = 15.0
+            time_threshold = float(self.config.get('interval_resting', 300.0))
+            distance_threshold = float(self.config.get('resting_distance', 15.0))
             activity = "resting"
         
+        # BUGFIX: Ensure we have a last_sent_position with valid timestamp to prevent timestamp inconsistencies
+        if 'timestamp' not in self.last_sent_position:
+            self.last_sent_position['timestamp'] = current_time - time_threshold - 1  # Force an update on first run
+            logger.warning("Fixed missing timestamp in last_sent_position")
+            
         # Check time threshold - must be at least the minimum interval since last send
         time_since_last = current_time - self.last_sent_position['timestamp']
         time_threshold_met = time_since_last >= time_threshold
