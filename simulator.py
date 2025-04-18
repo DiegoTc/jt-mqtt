@@ -435,10 +435,12 @@ class GPSTrackingSimulator:
                             self._handle_batch_reporting(additional_info)
                         else:
                             logger.info(f"Sending location: {self.latitude}, {self.longitude}")
-                            # Ensure values are of correct types
+                            # Ensure values are of correct types and within valid ranges
                             int_altitude = int(self.altitude)
-                            int_speed = int(self.speed)
-                            int_direction = int(self.direction)
+                            # Ensure speed is within valid byte range (0-255)
+                            int_speed = min(255, max(0, int(self.speed)))
+                            # Ensure direction is within valid byte range (0-255)
+                            int_direction = min(255, max(0, int(self.direction % 256)))
                             int_alarm = int(self.alarm)
                             int_status = int(self.status)
                             
