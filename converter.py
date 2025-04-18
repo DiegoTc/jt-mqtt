@@ -1096,8 +1096,20 @@ class JT808Server:
                         
                     # Create valid ISO-8601 timestamp
                     iso_timestamp = f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+                    
+                    # FIX: Only use timestamp if it's recent (within the last day)
+                    # This prevents using very old timestamps stored in the location data
+                    timestamp_date = datetime.strptime(iso_timestamp, "%Y-%m-%dT%H:%M:%SZ")
+                    current_date = datetime.utcnow()
+                    time_diff = (current_date - timestamp_date).total_seconds()
+                    
+                    # If timestamp is more than 1 day old, use current time instead
+                    if abs(time_diff) > 86400:  # 86400 seconds = 1 day
+                        logger.warning(f"Timestamp too old: {iso_timestamp}, using current time")
+                        iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 except (ValueError, IndexError):
-                    # Use current time if there's an issue
+                    # Use current time if there's any issue
+                    logger.warning(f"Invalid timestamp format: {timestamp}, using current time")
                     iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 
                 # Create location entry based on optimization setting
