@@ -387,8 +387,6 @@ class GPSTrackingSimulator:
                         logger.info(f"Distance threshold ({self.min_position_delta}m) met, but time threshold not met yet. Waiting {time_remaining:.1f}s more.")
                     elif time_threshold_met and distance_threshold_met:
                         logger.info(f"Both time ({location_interval}s) and distance ({self.min_position_delta}m) thresholds met. Sending location update.")
-                        # Reset time counter for next interval when both thresholds are met
-                        next_forced_update = time_now + location_interval
                     
                     # Only send if BOTH thresholds (time and distance) are met
                     if should_send:
@@ -465,6 +463,9 @@ class GPSTrackingSimulator:
                             }
                             # Reset the distance threshold flag - will only be set to True again when sufficient movement occurs
                             self.should_send_location = False
+                            
+                            # CRITICAL FIX: Reset the time threshold as well after successful sending
+                            next_forced_update = time.time() + location_interval
                     else:
                         logger.debug(f"Skipping location update - position delta below threshold")
                         
@@ -497,6 +498,15 @@ class GPSTrackingSimulator:
             logger.info(f"Sending batch of {len(self.batch_locations)} locations")
             self.protocol.send_batch_location(self.batch_locations)
             self.batch_locations = []
+            
+            # Update last sent position tracking
+            self.last_sent_position = {
+                'lat': self.latitude,
+                'lon': self.longitude,
+                'timestamp': time.time()
+            }
+            # Reset the distance threshold flag after sending batch
+            self.should_send_location = False
             
     def _update_location(self):
         """Update location coordinates to simulate movement with activity-based thresholds"""
