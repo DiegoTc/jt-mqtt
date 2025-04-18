@@ -27,7 +27,9 @@ try:
         """Return a standardized ISO-8601 timestamp in UTC with 'Z' suffix.
         
         This ensures all timestamps are in the same format: YYYY-MM-DDThh:mm:ssZ
+        without microseconds and with the Z suffix indicating UTC.
         """
+        # Using consistent ISO-8601 format with Z suffix to indicate UTC timezone
         return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     from dotenv import load_dotenv
     
@@ -921,19 +923,19 @@ class JT808Server:
                     
                     # FIX: Validate that timestamp is within reasonable range (not too old/future)
                     timestamp_date = datetime.strptime(iso_timestamp, "%Y-%m-%dT%H:%M:%SZ")
-                    current_date = datetime.utcnow()
+                    current_date = datetime.strptime(get_standardized_timestamp(), "%Y-%m-%dT%H:%M:%SZ")
                     time_diff = (current_date - timestamp_date).total_seconds()
                     
                     # If timestamp is more than 1 day old or 1 hour in the future, use current time
                     if time_diff > 86400 or time_diff < -3600:
                         logger.warning(f"Timestamp outside reasonable range: {iso_timestamp}, using current time")
-                        iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                        iso_timestamp = get_standardized_timestamp()
                     else:
                         logger.debug(f"Valid timestamp format: {iso_timestamp}")
             except (ValueError, IndexError) as e:
                 # If there's any issue with the timestamp parsing, use current time
                 logger.warning(f"Invalid timestamp format: {timestamp}, using current time. Error: {e}")
-                iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                iso_timestamp = get_standardized_timestamp()
             
             # Use the configured MQTT location topic (with device_id replacement)
             topic = self.mqtt_location_topic.replace('{device_id}', device_id)
@@ -1126,17 +1128,17 @@ class JT808Server:
                     # FIX: Only use timestamp if it's recent (within the last day)
                     # This prevents using very old timestamps stored in the location data
                     timestamp_date = datetime.strptime(iso_timestamp, "%Y-%m-%dT%H:%M:%SZ")
-                    current_date = datetime.utcnow()
+                    current_date = datetime.strptime(get_standardized_timestamp(), "%Y-%m-%dT%H:%M:%SZ")
                     time_diff = (current_date - timestamp_date).total_seconds()
                     
                     # If timestamp is more than 1 day old, use current time instead
                     if abs(time_diff) > 86400:  # 86400 seconds = 1 day
                         logger.warning(f"Timestamp too old: {iso_timestamp}, using current time")
-                        iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                        iso_timestamp = get_standardized_timestamp()
                 except (ValueError, IndexError):
                     # Use current time if there's any issue
                     logger.warning(f"Invalid timestamp format: {timestamp}, using current time")
-                    iso_timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                    iso_timestamp = get_standardized_timestamp()
                 
                 # Create location entry based on optimization setting
                 if self.optimize_payload:
