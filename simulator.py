@@ -35,30 +35,59 @@ class GPSTrackingSimulator:
             config: Configuration dictionary
         """
         # MQTT Configuration
-        self.mqtt_broker = config['mqtt']['broker_url']
-        self.mqtt_port = config['mqtt']['broker_port']
+        mqtt_config = config.get('mqtt', {})
+        if not mqtt_config:
+            logger.warning("No MQTT configuration found, using defaults")
+            mqtt_config = {
+                "broker_url": "test.mosquitto.org",
+                "broker_port": 1883
+            }
+            
+        self.mqtt_broker = mqtt_config.get('broker_url', 'test.mosquitto.org')
+        self.mqtt_port = mqtt_config.get('broker_port', 1883)
         # Ensure client ID is unique by adding timestamp and random suffix
-        client_id_base = config['mqtt'].get('client_id', "pettracker_simulator")
+        client_id_base = mqtt_config.get('client_id', "pettracker_simulator")
         self.mqtt_client_id = f"{client_id_base}_{int(time.time())}_{random.randint(1000, 9999)}"
-        self.mqtt_username = config['mqtt'].get('username', '')
-        self.mqtt_password = config['mqtt'].get('password', '')
-        self.mqtt_use_tls = config['mqtt'].get('use_tls', False)
+        self.mqtt_username = mqtt_config.get('username', '')
+        self.mqtt_password = mqtt_config.get('password', '')
+        self.mqtt_use_tls = mqtt_config.get('use_tls', False)
         
         # Device Configuration
-        self.device_id = config['device']['device_id']
-        self.latitude = config['device']['start_lat']
-        self.longitude = config['device']['start_lon']
+        device_config = config.get('device', {})
+        if not device_config:
+            logger.warning("No device configuration found, using defaults")
+            device_config = {
+                "device_id": "123456",
+                "start_lat": 14.072275,
+                "start_lon": -87.192136
+            }
+            
+        self.device_id = device_config.get('device_id', '123456')
+        self.latitude = device_config.get('start_lat', 14.072275)
+        self.longitude = device_config.get('start_lon', -87.192136)
         
         # Simulation Configuration
-        self.location_interval = config['simulation'].get('location_interval', 5)
-        self.heartbeat_interval = config['simulation'].get('heartbeat_interval', 30)
-        self.status_interval = config['simulation'].get('status_interval', 300)
+        sim_config = config.get('simulation', {})
+        if not sim_config:
+            logger.warning("No simulation configuration found, using defaults")
+            sim_config = {
+                "location_interval": 5,
+                "heartbeat_interval": 30,
+                "status_interval": 300,
+                "movement_speed": 5,
+                "direction_change_probability": 0.2,
+                "movement_variation": 0.3
+            }
+            
+        self.location_interval = sim_config.get('location_interval', 5)
+        self.heartbeat_interval = sim_config.get('heartbeat_interval', 30)
+        self.status_interval = sim_config.get('status_interval', 300)
         
         # Movement Parameters
-        self.movement_speed = config['simulation'].get('movement_speed', 5)  # meters per second
+        self.movement_speed = sim_config.get('movement_speed', 5)  # meters per second
         self.direction = random.uniform(0, 360)  # random initial direction
-        self.direction_change_probability = config['simulation'].get('direction_change_probability', 0.2)
-        self.movement_variation = config['simulation'].get('movement_variation', 0.3)
+        self.direction_change_probability = sim_config.get('direction_change_probability', 0.2)
+        self.movement_variation = sim_config.get('movement_variation', 0.3)
         
         # Runtime state
         self.mqtt_client = None
@@ -413,7 +442,7 @@ if __name__ == "__main__":
         logger.info("Using default configuration")
         config = {
             "mqtt": {
-                "broker_url": "localhost",
+                "broker_url": "test.mosquitto.org",
                 "broker_port": 1883
             },
             "device": {
