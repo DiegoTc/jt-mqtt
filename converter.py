@@ -1367,30 +1367,43 @@ class JT808Server:
             topic: MQTT topic
             payload: Message payload (will be converted to JSON)
         """
-        # Check if MQTT client is available and connected
+        # Check if MQTT client is available
         if self.mqtt_client is None:
             logger.warning(f"MQTT client is not available. Simulated publish to {topic}")
             return
-            
-        # Check for connection status in three possible places
-        mqtt_connected = False
         
-        # 1. Check client's _mqtt_connected property
-        if hasattr(self.mqtt_client, '_mqtt_connected'):
-            mqtt_connected = self.mqtt_client._mqtt_connected
-            
-        # 2. Check userdata mqtt_config
-        elif hasattr(self.mqtt_client, '_userdata') and isinstance(self.mqtt_client._userdata, dict) and \
-             'mqtt_config' in self.mqtt_client._userdata and \
-             self.mqtt_client._userdata['mqtt_config'].get('mqtt_connected', False):
-            mqtt_connected = True
-            
-        # 3. Check self.mqtt_config
-        elif self.mqtt_config.get('mqtt_connected', False):
-            mqtt_connected = True
-            
+        # Force connection to HiveMQ if not connected
+        if not hasattr(self.mqtt_client, '_mqtt_connected') or not self.mqtt_client._mqtt_connected:
+            try:
+                logger.info("MQTT client not connected. Attempting to connect to HiveMQ...")
+                # Create a new client for HiveMQ with a unique ID
+                client_id = f'pettracker_converter_{random.randint(1000, 9999)}'
+                self.mqtt_client = mqtt.Client(client_id=client_id)
+                self.mqtt_client.on_connect = on_connect
+                self.mqtt_client.on_disconnect = on_disconnect
+                self.mqtt_client.on_publish = on_publish
+                
+                # Store mqtt_config on the client object
+                self.mqtt_client.mqtt_config = self.mqtt_config
+                
+                # Connect to HiveMQ
+                self.mqtt_client.connect("broker.hivemq.com", 1883, keepalive=5)
+                self.mqtt_client.loop_start()
+                logger.info(f"Connected to HiveMQ public broker with client ID: {client_id}")
+                
+                # Set connected flag
+                self.mqtt_client._mqtt_connected = True
+                self.mqtt_config['mqtt_connected'] = True
+            except Exception as e:
+                logger.error(f"Failed to connect to HiveMQ: {e}")
+                logger.warning(f"MQTT client is not connected. Simulated publish to {topic}")
+                return
+        
+        # At this point, we should be connected or have failed trying
+        mqtt_connected = getattr(self.mqtt_client, '_mqtt_connected', False) or self.mqtt_config.get('mqtt_connected', False)
+        
         if not mqtt_connected:
-            logger.warning(f"MQTT client is not connected. Simulated publish to {topic}")
+            logger.warning(f"MQTT client is still not connected. Simulated publish to {topic}")
             return
             
         try:
@@ -1457,10 +1470,22 @@ def on_connect(client, userdata, flags, rc):
         # Also set the _mqtt_connected property on the client object
         client._mqtt_connected = True
         
+        # Update the mqtt_config directly in case userdata wasn't passed correctly
+        if hasattr(client, 'mqtt_config'):
+            client.mqtt_config['mqtt_connected'] = True
+            logger.info("Updated mqtt_connected flag in client.mqtt_config")
+        
         # Publish a test message to confirm connection
         try:
-            client.publish("pettracker/system/status", json.dumps({"status": "connected", "timestamp": get_standardized_timestamp()}))
-            logger.info("Published test message to MQTT broker")
+            result = client.publish("pettracker/system/status", 
+                                  json.dumps({"status": "connected", 
+                                             "timestamp": get_standardized_timestamp(),
+                                             "broker": "HiveMQ"}), 
+                                  qos=1)
+            if result.rc == mqtt.MQTT_ERR_SUCCESS:
+                logger.info("Published test message to MQTT broker successfully")
+            else:
+                logger.error(f"Failed to publish test message, rc={result.rc}")
         except Exception as e:
             logger.error(f"Failed to publish test message: {e}")
     else:

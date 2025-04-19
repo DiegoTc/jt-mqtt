@@ -1,0 +1,8 @@
+{
+  "workflows": [
+    {
+      "name": "mqtt_monitor",
+      "command": "python mqtt_monitor.py -v -t \"pettracker/#\" -b broker.hivemq.com"
+    }
+  ]
+}

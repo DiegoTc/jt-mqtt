@@ -40,12 +40,37 @@ def on_message(client, userdata, msg):
     """Callback when a message is received"""
     try:
         # Try to parse as JSON
-        payload = json.loads(msg.payload.decode())
-        pretty_payload = json.dumps(payload, indent=2)
-        logger.info(f"Received message on topic {msg.topic}:\n{pretty_payload}")
-    except:
-        # If not JSON, display as string
-        logger.info(f"Received message on topic {msg.topic}: {msg.payload.decode()}")
+        payload_str = msg.payload.decode('utf-8')
+        try:
+            # Try to parse JSON
+            payload = json.loads(payload_str)
+            
+            # Format timestamp if exists in payload for better readability
+            if 'timestamp' in payload:
+                payload['timestamp'] = f"{payload['timestamp']}"
+                
+            # Highlight important fields for better visibility
+            if 'device_id' in payload:
+                payload['device_id'] = f"{payload['device_id']}"
+            elif 'd' in payload:  # Optimized field name
+                payload['d'] = f"{payload['d']}"
+                
+            # Format and highlight location data if present
+            if 'lat' in payload and 'lon' in payload:
+                payload['lat'] = f"{payload['lat']}"
+                payload['lon'] = f"{payload['lon']}"
+                
+            pretty_payload = json.dumps(payload, indent=2)
+        except json.JSONDecodeError:
+            # Not JSON, use raw string
+            pretty_payload = payload_str
+            
+        logger.info(f"=== MQTT MESSAGE ===")
+        logger.info(f"Topic: {msg.topic}")
+        logger.info(f"Payload:\n{pretty_payload}")
+        logger.info(f"==================")
+    except Exception as e:
+        logger.error(f"Error processing message: {e}")
 
 def main():
     """Main entry point"""
