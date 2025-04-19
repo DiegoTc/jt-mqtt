@@ -1,0 +1,23 @@
+mqtt:
+  broker_url: "localhost"
+  broker_port: 1883
+  client_id: "pettracker_simulator"
+  use_tls: false
+  username: ""
+  password: ""
+
+device:
+  device_id: "123456"
+  start_lat: 14.072275
+  start_lon: -87.192136
+  
+simulation:
+  # Intervals (in seconds)
+  location_interval: 5
+  heartbeat_interval: 30
+  status_interval: 300
+  
+  # Movement simulation parameters
+  movement_speed: 5  # meters per second
+  direction_change_probability: 0.2
+  movement_variation: 0.3  # randomness factor

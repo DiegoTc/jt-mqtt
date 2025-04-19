@@ -12,6 +12,8 @@ import threading
 import time
 import subprocess
 import signal
+import yaml
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -35,24 +37,66 @@ MAX_LOG_LINES = 100
 def load_config():
     """Load configuration from file"""
     try:
-        if os.path.exists('config.json'):
+        # First try to load from YAML
+        if os.path.exists('config.yaml'):
+            with open('config.yaml', 'r') as f:
+                config = yaml.safe_load(f)
+                logger.info("Loaded configuration from config.yaml")
+                return config
+        # Fallback to JSON for backward compatibility
+        elif os.path.exists('config.json'):
             with open('config.json', 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                logger.info("Loaded configuration from config.json")
+                return config
         else:
-            logger.warning("config.json not found, using defaults")
-            return {}
+            # Default configuration
+            config = {
+                "mqtt": {
+                    "broker_url": "localhost",
+                    "broker_port": 1883,
+                    "client_id": "pettracker_simulator",
+                    "use_tls": False
+                },
+                "device": {
+                    "device_id": "123456",
+                    "start_lat": 14.072275,
+                    "start_lon": -87.192136
+                },
+                "simulation": {
+                    "location_interval": 5,
+                    "heartbeat_interval": 30,
+                    "status_interval": 300,
+                    "movement_speed": 5,
+                    "direction_change_probability": 0.2,
+                    "movement_variation": 0.3
+                }
+            }
+            # Save default configuration as YAML
+            with open('config.yaml', 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            logger.info("Created default configuration in config.yaml")
+            return config
     except Exception as e:
-        logger.error(f"Failed to load config.json: {e}")
+        logger.error(f"Error loading configuration: {e}")
         return {}
 
 def save_config(config):
     """Save configuration to file"""
     try:
+        # Save as YAML first
+        with open('config.yaml', 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+        logger.info("Saved configuration to config.yaml")
+        
+        # Also save as JSON for backward compatibility
         with open('config.json', 'w') as f:
             json.dump(config, f, indent=4)
+        logger.info("Saved configuration to config.json")
+        
         return True
     except Exception as e:
-        logger.error(f"Failed to save config.json: {e}")
+        logger.error(f"Failed to save configuration: {e}")
         return False
 
 def add_log(log_list, message):
