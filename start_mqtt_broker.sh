@@ -2,8 +2,5 @@
 
 echo "Starting Mosquitto MQTT broker for PetTracker testing..."
 
-# Create persistence directory if it doesn't exist
-mkdir -p /tmp/mosquitto/
-
-# Start Mosquitto with our configuration
+# Start Mosquitto with our configuration (persistence disabled in config)
 mosquitto -c mosquitto.conf -v
