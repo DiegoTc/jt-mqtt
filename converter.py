@@ -31,10 +31,14 @@ try:
         """
         # Using consistent ISO-8601 format with Z suffix to indicate UTC timezone
         return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    from dotenv import load_dotenv
-    
-    # Load environment variables from .env file
-    load_dotenv()
+    # Try to import dotenv for environment variables, but continue if not available
+    try:
+        from dotenv import load_dotenv
+        # Load environment variables from .env file
+        load_dotenv()
+    except ImportError:
+        # Continue without dotenv if not available
+        pass
     
     # Configure basic logging before importing modules that might use it
     # Get log level from environment or use INFO as default
@@ -1701,19 +1705,42 @@ def main():
             if config.get('mqtt_user') and config.get('mqtt_password'):
                 mqtt_client.username_pw_set(config['mqtt_user'], config['mqtt_password'])
                 
-            # Connect to local MQTT broker with short timeout
+            # Connect to MQTT broker with short timeout
             try:
+                # First try the configured broker
                 mqtt_client.connect(config['mqtt_host'], config['mqtt_port'], keepalive=5)
                 mqtt_client.loop_start()
-                logger.info(f"Connected to local MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
+                logger.info(f"Connected to MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
                 mqtt_connected = True
                 # Update the config with the connected status
                 mqtt_config['mqtt_connected'] = True
             except Exception as e:
-                logger.warning(f"Failed to connect to local MQTT broker: {e}")
-                logger.warning("Continuing in simulation mode without MQTT publishing")
-                # Ensure mqtt_config knows we're not connected
-                mqtt_config['mqtt_connected'] = False
+                logger.warning(f"Failed to connect to primary MQTT broker: {e}")
+                
+                # If we're in Replit and connection failed, try HiveMQ as fallback
+                try:
+                    # Create a new client for HiveMQ
+                    logger.info("Attempting to connect to HiveMQ public broker as fallback...")
+                    mqtt_client = mqtt.Client(
+                        client_id=config.get('mqtt_client_id', f'pettracker_converter_{random.randint(1000, 9999)}'),
+                        userdata={'mqtt_config': mqtt_config}
+                    )
+                    mqtt_client.on_connect = on_connect
+                    mqtt_client.on_disconnect = on_disconnect
+                    mqtt_client.on_publish = on_publish
+                    
+                    # Connect to HiveMQ
+                    mqtt_client.connect("broker.hivemq.com", 1883, keepalive=5)
+                    mqtt_client.loop_start()
+                    logger.info("Connected to HiveMQ public broker at broker.hivemq.com:1883")
+                    mqtt_connected = True
+                    # Update the config with the connected status
+                    mqtt_config['mqtt_connected'] = True
+                except Exception as fallback_e:
+                    logger.error(f"Failed to connect to fallback MQTT broker: {fallback_e}")
+                    logger.warning("Continuing in simulation mode without MQTT publishing")
+                    # Ensure mqtt_config knows we're not connected
+                    mqtt_config['mqtt_connected'] = False
     except Exception as e:
         logger.warning(f"Failed to initialize MQTT client: {e}")
         logger.warning("Continuing in simulation mode without MQTT")
