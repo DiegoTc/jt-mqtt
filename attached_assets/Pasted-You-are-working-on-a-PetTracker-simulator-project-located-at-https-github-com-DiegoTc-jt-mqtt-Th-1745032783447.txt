@@ -1,0 +1,125 @@
+You are working on a PetTracker simulator project located at https://github.com/DiegoTc/jt-mqtt.
+
+The simulator must simulate a GPS tracker device sending data to a local Mosquitto MQTT broker (localhost:1883).
+
+The project already has a:
+
+publishers/mqtt_publisher.py → 🟰 Working fine, DO NOT MODIFY.
+
+converters/jt808_to_json_converter.py → 🟰 Working fine, DO NOT MODIFY.
+
+The current simulator.py is flawed and must be deleted and replaced from scratch.
+
+❗ Identified Critical Problems:
+simulator.py uses tight loops (time.sleep(0.1)), causing flooding of MQTT messages.
+
+High CPU usage due to bad design.
+
+No proper asyncio coroutine structure.
+
+Hardcoded broker address and device parameters.
+
+Unrealistic GPS movement (moves every 0.1s instead of normal walking speeds).
+
+No proper control of send intervals for location/heartbeat/status.
+
+Dual-gating for location (time+distance threshold) is not the main problem.
+The architecture and event timing are the real problems to fix.
+
+🎯 Corrective Actions You Must Take:
+Delete simulator.py.
+
+Write a new simulator.py from scratch with these features:
+
+Use asyncio with coroutines:
+
+send_location_loop() every 5 seconds.
+
+send_heartbeat_loop() every 30 seconds.
+
+send_status_loop() every 5 minutes.
+
+Simulate small, random lat/lon changes to mimic real GPS movement (~5 meters/second drift).
+
+Publish MQTT messages to correct topics:
+
+pettracker/<device_id>/location
+
+pettracker/<device_id>/heartbeat
+
+pettracker/<device_id>/status
+
+No flooding (strict event timing).
+
+Low CPU usage (no blocking sleeps).
+
+Continue using local Mosquitto broker (localhost:1883).
+
+Update main.py:
+
+Implement a load_config() function to load settings from a config.yaml file:
+
+yaml
+Copy
+Edit
+mqtt:
+  broker_url: "localhost"
+  broker_port: 1883
+
+device:
+  device_id: "123456"
+  start_lat: 14.072275
+  start_lon: -87.192136
+Launch both:
+
+New GPS simulator (GPSTrackingSimulator).
+
+Existing JT808ToJsonConverter.
+
+Use asyncio.gather() to run them concurrently.
+
+Protect working modules:
+
+DO NOT MODIFY:
+
+publishers/mqtt_publisher.py
+
+converters/jt808_to_json_converter.py
+
+Only touch simulator.py and main.py.
+
+📋 Deliverables:
+New, clean simulator.py following the above structure.
+
+Updated main.py with config loading.
+
+Sample config.yaml file.
+
+Code ready to commit and push to GitHub.
+
+Fully working simulation publishing to local Mosquitto.
+
+📢 Important Final Notes:
+✅ You are not allowed to "polish" the old simulator — you must replace it.
+✅ Focus on proper concurrency, event-driven behavior, and realistic simulation.
+✅ Ensure consistent MQTT topic formats and no CPU abuse.
+
+📋 Summary of Expected Changes
+
+Module	Action
+simulator.py	DELETE old one, CREATE new asyncio-based one
+main.py	UPDATE for config loading and new task launching
+mqtt_publisher.py	LEAVE UNTOUCHED
+jt808_to_json_converter.py	LEAVE UNTOUCHED
+✅ Now you have a fully clean, agent-actionable, professional corrective prompt.
+This forces the agent to:
+
+Replace bad code.
+
+Preserve working modules.
+
+Use config.yaml.
+
+Enforce local Mosquitto use.
+
+Create clean deliverables ready for GitHub.
