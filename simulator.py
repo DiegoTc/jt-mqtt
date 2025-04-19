@@ -133,6 +133,9 @@ class GPSTrackingSimulator:
                     if self.protocol.connect():
                         logger.info("Connected to server")
                         backoff_time = self.reconnect_interval  # Reset backoff time on success
+                        # Reset connection attempts counter on successful connection
+                        if hasattr(self, '_connection_attempts'):
+                            self._connection_attempts = 0
                         
                         # Run registration/authentication sequence
                         if self._register_and_authenticate():
@@ -145,10 +148,22 @@ class GPSTrackingSimulator:
                         if hasattr(self.protocol, 'last_error') and self.protocol.last_error:
                             logger.error(f"Connection error: {self.protocol.last_error}")
                         
+                        # Initialize connection attempts counter if not present
+                        if not hasattr(self, '_connection_attempts'):
+                            self._connection_attempts = 0
+                        
+                        # Increment connection attempts
+                        self._connection_attempts += 1
+                        
                         # Distinguish between connection refused and other errors
                         if hasattr(self.protocol, 'last_error') and "Connection refused" in str(self.protocol.last_error):
-                            logger.warning("The JT808 server (converter) is not running. Make sure to start it first.")
-                            logger.info("You can start the converter in the web UI or run 'bash workflow_converter.sh' in a terminal.")
+                            # Only show the warning after a few failed attempts to give converter time to start
+                            if self._connection_attempts >= 3:
+                                logger.warning("The JT808 server (converter) is not running. Make sure to start it first.")
+                                logger.info("You can start the converter in the web UI or run 'bash workflow_converter.sh' in a terminal.")
+                        else:
+                            # Reset connection attempts for other types of errors
+                            self._connection_attempts = 0
                         
                         # Wait and retry with backoff
                         logger.warning(f"Connection failed, retrying in {backoff_time} seconds...")
