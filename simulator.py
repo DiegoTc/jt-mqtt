@@ -141,7 +141,16 @@ class GPSTrackingSimulator:
                                 self._start_data_threads()
                                 self.threads_started = True
                     else:
-                        # Connection failed, wait and retry
+                        # Connection failed, provide detailed error info
+                        if hasattr(self.protocol, 'last_error') and self.protocol.last_error:
+                            logger.error(f"Connection error: {self.protocol.last_error}")
+                        
+                        # Distinguish between connection refused and other errors
+                        if hasattr(self.protocol, 'last_error') and "Connection refused" in str(self.protocol.last_error):
+                            logger.warning("The JT808 server (converter) is not running. Make sure to start it first.")
+                            logger.info("You can start the converter in the web UI or run 'bash workflow_converter.sh' in a terminal.")
+                        
+                        # Wait and retry with backoff
                         logger.warning(f"Connection failed, retrying in {backoff_time} seconds...")
                         time.sleep(backoff_time)
                         # Exponential backoff with max cap
