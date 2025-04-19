@@ -1701,15 +1701,19 @@ def main():
             if config.get('mqtt_user') and config.get('mqtt_password'):
                 mqtt_client.username_pw_set(config['mqtt_user'], config['mqtt_password'])
                 
-            # Connect to local MQTT broker
+            # Connect to local MQTT broker with short timeout
             try:
-                mqtt_client.connect(config['mqtt_host'], config['mqtt_port'])
+                mqtt_client.connect(config['mqtt_host'], config['mqtt_port'], keepalive=5)
                 mqtt_client.loop_start()
                 logger.info(f"Connected to local MQTT broker at {config['mqtt_host']}:{config['mqtt_port']}")
                 mqtt_connected = True
+                # Update the config with the connected status
+                mqtt_config['mqtt_connected'] = True
             except Exception as e:
                 logger.warning(f"Failed to connect to local MQTT broker: {e}")
-                logger.warning("Continuing in simulation mode without MQTT")
+                logger.warning("Continuing in simulation mode without MQTT publishing")
+                # Ensure mqtt_config knows we're not connected
+                mqtt_config['mqtt_connected'] = False
     except Exception as e:
         logger.warning(f"Failed to initialize MQTT client: {e}")
         logger.warning("Continuing in simulation mode without MQTT")
