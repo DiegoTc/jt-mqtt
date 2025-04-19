@@ -1,7 +1,7 @@
 mqtt:
-  broker_url: "localhost"
+  broker_url: "test.mosquitto.org"
   broker_port: 1883
-  client_id: "pettracker_simulator"
+  client_id: "pettracker_simulator_replit"
   use_tls: false
   username: ""
   password: ""

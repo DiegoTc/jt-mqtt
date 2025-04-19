@@ -37,7 +37,9 @@ class GPSTrackingSimulator:
         # MQTT Configuration
         self.mqtt_broker = config['mqtt']['broker_url']
         self.mqtt_port = config['mqtt']['broker_port']
-        self.mqtt_client_id = config['mqtt'].get('client_id', f"pettracker_simulator_{int(time.time())}")
+        # Ensure client ID is unique by adding timestamp and random suffix
+        client_id_base = config['mqtt'].get('client_id', "pettracker_simulator")
+        self.mqtt_client_id = f"{client_id_base}_{int(time.time())}_{random.randint(1000, 9999)}"
         self.mqtt_username = config['mqtt'].get('username', '')
         self.mqtt_password = config['mqtt'].get('password', '')
         self.mqtt_use_tls = config['mqtt'].get('use_tls', False)
@@ -117,39 +119,57 @@ class GPSTrackingSimulator:
     
     async def _connect_mqtt(self):
         """Connect to the MQTT broker"""
-        self.mqtt_client = mqtt.Client(client_id=self.mqtt_client_id)
-        
-        # Set up callbacks
-        self.mqtt_client.on_connect = self._on_mqtt_connect
-        self.mqtt_client.on_disconnect = self._on_mqtt_disconnect
-        self.mqtt_client.on_publish = self._on_mqtt_publish
-        
-        # Set credentials if provided
-        if self.mqtt_username and self.mqtt_password:
-            self.mqtt_client.username_pw_set(self.mqtt_username, self.mqtt_password)
-        
-        # Set TLS if required
-        if self.mqtt_use_tls:
-            self.mqtt_client.tls_set()
-        
-        # Connect
-        logger.info(f"Connecting to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
-        self.mqtt_client.connect(self.mqtt_broker, self.mqtt_port)
-        
-        # Start the MQTT client loop in a background thread
-        self.mqtt_client.loop_start()
-        
-        # Wait for the connection to establish
-        connection_timeout = 10  # seconds
-        start_time = time.time()
-        while not self.mqtt_client.is_connected() and time.time() - start_time < connection_timeout:
-            await asyncio.sleep(0.1)
-        
-        if not self.mqtt_client.is_connected():
-            logger.error(f"Failed to connect to MQTT broker after {connection_timeout} seconds")
-            raise ConnectionError("Failed to connect to MQTT broker")
-        
-        logger.info("Connected to MQTT broker")
+        try:
+            # Create a new client instance with a unique ID
+            self.mqtt_client = mqtt.Client(client_id=self.mqtt_client_id)
+            
+            # Set up callbacks
+            self.mqtt_client.on_connect = self._on_mqtt_connect
+            self.mqtt_client.on_disconnect = self._on_mqtt_disconnect
+            self.mqtt_client.on_publish = self._on_mqtt_publish
+            
+            # Set credentials if provided
+            if self.mqtt_username and self.mqtt_password:
+                self.mqtt_client.username_pw_set(self.mqtt_username, self.mqtt_password)
+            
+            # Set TLS if required
+            if self.mqtt_use_tls:
+                self.mqtt_client.tls_set()
+            
+            # Connect
+            logger.info(f"Connecting to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
+            self.mqtt_client.connect_async(self.mqtt_broker, self.mqtt_port, keepalive=60)
+            
+            # Start the MQTT client loop in a background thread
+            self.mqtt_client.loop_start()
+            
+            # Wait for the connection to establish
+            connection_timeout = 15  # seconds
+            start_time = time.time()
+            connected = False
+            
+            while time.time() - start_time < connection_timeout:
+                if self.mqtt_client.is_connected():
+                    connected = True
+                    break
+                await asyncio.sleep(0.5)
+            
+            if not connected:
+                logger.error(f"Failed to connect to MQTT broker after {connection_timeout} seconds")
+                self.mqtt_client.loop_stop()
+                raise ConnectionError(f"Failed to connect to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
+            
+            logger.info(f"Successfully connected to MQTT broker at {self.mqtt_broker}:{self.mqtt_port}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error connecting to MQTT broker: {e}")
+            if hasattr(self, 'mqtt_client') and self.mqtt_client:
+                try:
+                    self.mqtt_client.loop_stop()
+                except:
+                    pass
+            raise ConnectionError(f"Failed to connect to MQTT broker: {str(e)}")
     
     def _on_mqtt_connect(self, client, userdata, flags, rc):
         """MQTT connect callback"""
@@ -306,18 +326,45 @@ class GPSTrackingSimulator:
     
     def _publish_mqtt(self, topic, message):
         """Publish a message to MQTT"""
-        if not self.mqtt_client or not self.mqtt_client.is_connected():
-            logger.error("Cannot publish - MQTT client not connected")
+        try:
+            # Check if MQTT client exists and is connected
+            if not self.mqtt_client:
+                logger.error("Cannot publish - MQTT client not initialized")
+                return False
+                
+            if not self.mqtt_client.is_connected():
+                logger.error("Cannot publish - MQTT client not connected")
+                # Try to reconnect if the client exists but is not connected
+                logger.info("Attempting to reconnect to MQTT broker...")
+                try:
+                    self.mqtt_client.reconnect()
+                    # Wait briefly to see if connection is established
+                    time.sleep(1)
+                    if not self.mqtt_client.is_connected():
+                        logger.error("Reconnection attempt failed")
+                        return False
+                    logger.info("Successfully reconnected to MQTT broker")
+                except Exception as e:
+                    logger.error(f"Failed to reconnect to MQTT broker: {e}")
+                    return False
+            
+            # Convert message to JSON string
+            payload = json.dumps(message)
+            
+            # Publish with QoS 1 (at least once delivery)
+            result = self.mqtt_client.publish(topic, payload, qos=1)
+            
+            # Check result
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                logger.error(f"Failed to publish to {topic}: {result.rc}")
+                return False
+                
+            logger.debug(f"Successfully published to {topic}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error publishing message to {topic}: {e}")
             return False
-        
-        payload = json.dumps(message)
-        result = self.mqtt_client.publish(topic, payload, qos=1)
-        
-        if result.rc != mqtt.MQTT_ERR_SUCCESS:
-            logger.error(f"Failed to publish to {topic}: {result}")
-            return False
-        
-        return True
     
     def _get_timestamp(self):
         """Return a standardized ISO-8601 timestamp in UTC with 'Z' suffix"""
