@@ -38,6 +38,7 @@ class JT808Protocol:
         self.recv_queue = queue.Queue()
         self.recv_thread = None
         self.auth_code = None
+        self.last_error = None  # Store the last connection error for better debugging
         
     def connect(self):
         """Connect to the server"""
@@ -45,6 +46,7 @@ class JT808Protocol:
             return
             
         try:
+            self.last_error = None  # Reset last error
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.server_ip, self.server_port))
             self.connected = True
@@ -57,6 +59,7 @@ class JT808Protocol:
             
             return True
         except Exception as e:
+            self.last_error = e  # Store the error for better debugging
             self.logger.error(f"Connection failed: {e}")
             return False
             
@@ -72,6 +75,7 @@ class JT808Protocol:
                 self.socket.close()
             self.logger.info("Disconnected from server")
         except Exception as e:
+            self.last_error = e  # Store the error for better debugging
             self.logger.error(f"Disconnection error: {e}")
             
     def _get_next_serial_no(self):
@@ -95,11 +99,19 @@ class JT808Protocol:
             
         try:
             encoded_msg = message.encode()
+            if self.socket is None:
+                self.last_error = Exception("Socket is None when trying to send message")
+                self.logger.error("Socket is None when trying to send message")
+                self.connected = False  # Mark as disconnected
+                return False
+                
             self.socket.sendall(encoded_msg)
             self.logger.debug(f"Sent message: {message.msg_id:04X}, length: {len(encoded_msg)} bytes")
             return True
         except Exception as e:
+            self.last_error = e  # Store the error for better debugging
             self.logger.error(f"Failed to send message: {e}")
+            self.connected = False  # Mark as disconnected on send failure
             return False
             
     def _receive_thread(self):
@@ -108,8 +120,16 @@ class JT808Protocol:
         
         while self.connected:
             try:
+                # Check if socket is None
+                if self.socket is None:
+                    self.last_error = Exception("Socket is None in receive thread")
+                    self.logger.error("Socket is None in receive thread")
+                    self.connected = False
+                    break
+                
                 data = self.socket.recv(1024)
                 if not data:
+                    self.last_error = Exception("Connection closed by server")
                     self.logger.error("Connection closed by server")
                     self.connected = False
                     break
@@ -155,7 +175,9 @@ class JT808Protocol:
                         self.logger.error(f"Failed to decode message: {e}")
             except Exception as e:
                 if self.connected:
+                    self.last_error = e  # Store the error for better debugging
                     self.logger.error(f"Receive thread error: {e}")
+                    self.connected = False  # Mark as disconnected on receive failure
                     
         self.logger.info("Receive thread terminated")
         
