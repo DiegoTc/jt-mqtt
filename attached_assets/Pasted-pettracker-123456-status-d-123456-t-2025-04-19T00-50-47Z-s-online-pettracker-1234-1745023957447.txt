@@ -1,0 +1,38 @@
+pettracker/123456/status {"d": "123456", "t": "2025-04-19T00:50:47Z", "s": "online"}
+pettracker/123456/authentication {"device_id": "123456", "timestamp": "2025-04-19T00:50:47Z", "event": "authentication", "auth_code": ""}
+pettracker/123456/heartbeat {"device_id": "123456", "timestamp": "2025-04-19T00:50:57Z", "event": "heartbeat"}
+
+
+
+
+
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:48Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:49Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:50Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:51Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:52Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:53Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:54Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:55Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:56Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:57Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:58Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:51:59Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:00Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:01Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:02Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:03Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:04Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:05Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:06Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:07Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:08Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:09Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:10Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:11Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:12Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:13Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:14Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:15Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:16Z", "loc": {"lat": 1.203056, "lon": 180.0, "alt": 63388, "spd": 10.0, "dir": 11}}
+pettracker/123456/location {"d": "123456", "t": "2025-04-19T00:52:17Z", "loc": {"lat": 1.203056
