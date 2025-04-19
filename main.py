@@ -204,7 +204,11 @@ def api_simulator_start():
         return jsonify({'status': 'error', 'message': 'MQTT Converter is not running. Please start the converter first.'}), 400
     
     try:
-        # Start the simulator process
+        # Load configuration
+        config = load_config()
+        add_log(simulator_log, f'Simulator: Loaded configuration from {config.get("mqtt", {}).get("broker_url", "default broker")}')
+        
+        # Start the simulator process with verbose logging
         simulator_process = subprocess.Popen(
             ['python', 'simulator.py', '-v'],
             stdout=subprocess.PIPE,
@@ -221,7 +225,8 @@ def api_simulator_start():
         ).start()
         
         add_log(simulator_log, 'Simulator: Process started successfully')
-        return jsonify({'status': 'success', 'message': 'Simulator started'})
+        add_log(simulator_log, 'Simulator: Using asyncio architecture for better performance')
+        return jsonify({'status': 'success', 'message': 'Simulator started with asyncio architecture'})
     except Exception as e:
         add_log(simulator_log, f'Simulator ERROR: Failed to start: {e}')
         return jsonify({'status': 'error', 'message': str(e)}), 500
