@@ -39,11 +39,11 @@ class GPSTrackingSimulator:
         if not mqtt_config:
             logger.warning("No MQTT configuration found, using defaults")
             mqtt_config = {
-                "broker_url": "test.mosquitto.org",
+                "broker_url": "localhost",
                 "broker_port": 1883
             }
             
-        self.mqtt_broker = mqtt_config.get('broker_url', 'test.mosquitto.org')
+        self.mqtt_broker = mqtt_config.get('broker_url', 'localhost')
         self.mqtt_port = mqtt_config.get('broker_port', 1883)
         # Ensure client ID is unique by adding timestamp and random suffix
         client_id_base = mqtt_config.get('client_id', "pettracker_simulator")
@@ -442,7 +442,7 @@ if __name__ == "__main__":
         logger.info("Using default configuration")
         config = {
             "mqtt": {
-                "broker_url": "test.mosquitto.org",
+                "broker_url": "localhost",
                 "broker_port": 1883
             },
             "device": {
